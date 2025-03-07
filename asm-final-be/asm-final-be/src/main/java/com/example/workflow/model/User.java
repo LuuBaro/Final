@@ -21,13 +21,10 @@ public class User {
     private String email;
 
     @Column(nullable = false)
-    private String password; // Lưu ý: Nên mã hóa mật khẩu
+    private String password;
 
     @Column(length = 20)
     private String phone;
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
