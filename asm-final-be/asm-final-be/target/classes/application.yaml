@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres?currentSchema=final
+    url: jdbc:postgresql://localhost:5432/postgres?currentSchema=camunda
     username: postgres
     password: 123
     driver-class-name: org.postgresql.Driver
@@ -14,4 +14,4 @@ camunda.bpm:
     type: postgres
   admin-user:
     id: admin
-    password: 123
+    password: 123 
