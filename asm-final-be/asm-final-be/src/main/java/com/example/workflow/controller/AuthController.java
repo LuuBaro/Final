@@ -10,6 +10,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
+
 @RestController
 @RequestMapping("/api")
 public class AuthController {
@@ -45,6 +47,7 @@ public class AuthController {
 
         // Tạo token bằng JwtService
         String token = jwtService.generateToken(userDetails, user);
-        return ResponseEntity.ok(token);
+        return ResponseEntity.ok(Collections.singletonMap("token", token));
+
     }
 }

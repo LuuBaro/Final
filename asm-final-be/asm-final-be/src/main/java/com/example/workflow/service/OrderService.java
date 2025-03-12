@@ -6,6 +6,7 @@ import com.example.workflow.utils.Constants;
 import lombok.RequiredArgsConstructor;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
+import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -112,6 +113,7 @@ public class OrderService {
         return savedOrder;
     }
 
+    // Người dùng huỷ hàng
     public ResponseEntity<?> cancelOrder(String orderId, String taskId) {
         try {
             // 1. Kiểm tra order có tồn tại không
@@ -165,6 +167,7 @@ public class OrderService {
         }
     }
 
+    // Xác nhận hủy và xóa đơn
     public ResponseEntity<?> deleteOrder(String orderId, String taskId) {
         try {
             // 1. Kiểm tra order có tồn tại không
@@ -215,6 +218,149 @@ public class OrderService {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
+        }
+    }
+
+    // Admin duyệt đơn hàng trước khi người dùng hủy hàng
+    public ResponseEntity<?> approveOrder(String orderId, String taskId) {
+        try {
+            UUID orderUUID = UUID.fromString(orderId);
+            Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
+            if (optionalOrder.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Order not found"));
+            }
+            Order order = optionalOrder.get();
+
+            // Cập nhật trạng thái duyệt
+            order.setStatus(Order.OrderStatus.CONFIRMED);
+            orderRepository.save(order);
+
+            // Thiết lập biến cho Camunda
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("orderCanceled", false); // Đặt false vì admin duyệt đơn
+            variables.put("orderId", order.getId().toString());
+
+            Task task = taskService.createTaskQuery()
+                    .processInstanceBusinessKey(order.getId().toString())
+                    .taskDefinitionKey(Constants.USER_TASK_CANCEL_ORDER)
+                    .singleResult();
+
+            if (task == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Task not found"));
+            }
+
+            taskService.complete(task.getId(), variables);
+
+            // ✅ Trả về trạng thái mới của đơn hàng
+            return ResponseEntity.ok(Map.of("status", order.getStatus().toString()));
+
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid orderId format"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Internal Server Error: " + e.getMessage()));
+        }
+    }
+
+    // Nếu còn hàng
+    public ResponseEntity<String> approveStock(String orderId) {
+        try {
+            UUID orderUUID;
+            try {
+                orderUUID = UUID.fromString(orderId);
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body("❌ Invalid orderId format");
+            }
+
+            Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
+            if (optionalOrder.isEmpty()) {
+                return ResponseEntity.badRequest().body("❌ Order not found");
+            }
+
+            // 🔍 Kiểm tra Process Instance trước
+            ProcessInstance instance = runtimeService.createProcessInstanceQuery()
+                    .processInstanceBusinessKey(orderId)
+                    .singleResult();
+
+            if (instance == null) {
+                return ResponseEntity.badRequest().body("❌ Không tìm thấy ProcessInstance với orderId: " + orderId);
+            }
+
+            Order order = optionalOrder.get();
+
+            // Cập nhật trạng thái duyệt
+            order.setStatus(Order.OrderStatus.CONFIRMED);
+            orderRepository.save(order);
+
+            // 🔍 Tìm Task "Còn hàng"
+            Task task = taskService.createTaskQuery()
+                    .processInstanceId(instance.getId())
+                    .taskDefinitionKey(Constants.USER_TASK_APPROVE_ORDER)
+                    .singleResult();
+
+            if (task == null) {
+                return ResponseEntity.badRequest().body("❌ Không tìm thấy User Task 'Còn hàng' trong quy trình.");
+            }
+
+            // ✅ Hoàn thành Task
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("isInStock", true);
+            taskService.complete(task.getId(), variables);
+
+            return ResponseEntity.ok("✅ Đơn hàng đã xác nhận còn hàng và chuyển sang kiểm tra thanh toán!");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
+        }
+    }
+
+    // Nếu hết hàng
+    public ResponseEntity<?> rejectStock(String orderId) {
+        try {
+            // 1️⃣ Chuyển đổi orderId sang UUID để đảm bảo hợp lệ
+            UUID orderUUID;
+            try {
+                orderUUID = UUID.fromString(orderId);
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body("❌ Invalid orderId format");
+            }
+
+            // 2️⃣ Kiểm tra đơn hàng có tồn tại không
+            Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
+            if (optionalOrder.isEmpty()) {
+                return ResponseEntity.badRequest().body("❌ Order not found");
+            }
+
+            Order order = optionalOrder.get();
+
+            // Cập nhật trạng thái duyệt
+            order.setStatus(Order.OrderStatus.CANCELED);
+            orderRepository.save(order);
+
+            // 3️⃣ Tìm Task "Hết hàng" liên quan đến đơn hàng
+            Task task = taskService.createTaskQuery()
+                    .processInstanceBusinessKey(orderUUID.toString()) // Tìm theo businessKey (orderId)
+                    .taskDefinitionKey(Constants.USER_TASK_REJECT_ORDER) // Định danh task "Hết hàng"
+                    .singleResult();
+
+            if (task == null) {
+                // Log thông tin để debug nếu cần
+                System.out.println("Không tìm thấy task 'Hết hàng' cho đơn hàng: " + orderId);
+                return ResponseEntity.badRequest().body("❌ Không tìm thấy User Task 'Hết hàng' cho đơn hàng: " + orderId);
+            }
+
+            // 4️⃣ Hoàn thành Task "Hết hàng" với biến báo hiệu hết hàng
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("isInStock", false); // Xác nhận hết hàng
+            taskService.complete(task.getId(), variables);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "🚨 Đơn hàng đã bị hủy do hết hàng!",
+                    "orderId", orderId
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
         }
     }
 }

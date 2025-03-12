@@ -32,4 +32,24 @@ public class CamundaController {
         return ResponseEntity.ok(orderService.deleteOrder(orderId, taskId));
     }
 
+    // API xác nhận đơn hàng của admin
+    @PutMapping("/approve-order")
+    public ResponseEntity<?> approveOrder(
+            @RequestParam("orderId") String orderId,
+            @RequestParam(value = "taskId", required = false) String taskId
+    ) {
+        return ResponseEntity.ok(orderService.approveOrder(orderId, taskId));
+    }
+
+    // API xác nhận từ chối đơn hàng của admin
+    @PutMapping("/reject-stock")
+    public ResponseEntity<?> rejectStock(@RequestParam("orderId") String orderId) {
+        return orderService.rejectStock(orderId);
+    }
+
+    // API xác nhận đồng ý đơn hàng của admin
+    @PutMapping("/approve-stock")
+    public ResponseEntity<String> approveStock(@RequestParam("orderId") String orderId) {
+        return orderService.approveStock(orderId);
+    }
 }
