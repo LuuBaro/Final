@@ -19,6 +19,20 @@ public class CartController {
     @Autowired
     private CartService cartService;
 
+    // Lấy danh sách sản phẩm trong giỏ hàng
+    @GetMapping("/cart")
+    public ResponseEntity<?> getCartItems() {
+        try {
+            List<Cart> cartItems = cartService.getCartItems();
+            return ResponseEntity.ok(cartItems);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Đã xảy ra lỗi khi lấy giỏ hàng");
+        }
+    }
+
     // Thêm sản phẩm vào giỏ hàng
     @PostMapping("/addCart")
     public ResponseEntity<?> addToCart(@RequestBody AddCartRequest request) {
@@ -35,23 +49,9 @@ public class CartController {
         }
     }
 
-    // Lấy danh sách sản phẩm trong giỏ hàng
-    @GetMapping("/cart")
-    public ResponseEntity<?> getCartItems() {
-        try {
-            List<Cart> cartItems = cartService.getCartItems();
-            return ResponseEntity.ok(cartItems);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Đã xảy ra lỗi khi lấy giỏ hàng");
-        }
-    }
-
     // Cập nhật số lượng của một sản phẩm trong giỏ hàng
     @PutMapping("/cart/{cartId}")
-    public ResponseEntity<?> updateCartQuantity(@PathVariable UUID cartId, @RequestBody Map<String, Integer> request) {
+    public ResponseEntity<?> updateCartQuantity(@PathVariable("cartId") UUID cartId, @RequestBody Map<String, Integer> request) {
         try {
             Cart updatedCart = cartService.updateCartQuantity(cartId, request.get("quantity"));
             return ResponseEntity.ok(updatedCart);

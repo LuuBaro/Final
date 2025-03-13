@@ -36,7 +36,24 @@ public class OrderService {
     private UserRepository userRepository;
 
     private final RuntimeService runtimeService;
+
     private final TaskService taskService;
+
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
+
+    public Optional<Order> getOrderById(UUID id) {
+        return orderRepository.findById(id);
+    }
+
+    public Order createOrder(Order order) {
+        return orderRepository.save(order);
+    }
+
+    public void deleteOrder(UUID id) {
+        orderRepository.deleteById(id);
+    }
 
     @Transactional
     public Order createOrderFromCart(UUID userId) {
@@ -180,7 +197,7 @@ public class OrderService {
             Order order = optionalOrder.get();
             // 2. Cập nhật trạng thái đơn hàng nếu cần (ví dụ: chuyển thành DELETED hoặc giữ nguyên trạng thái)
             // Nếu bạn muốn cập nhật trạng thái, hãy chắc chắn rằng enum OrderStatus có giá trị này.
-            order.setStatus(Order.OrderStatus.CANCELED); // Hoặc bạn có thể không thay đổi trạng thái
+            order.setStatus(Order.OrderStatus.DELETED); // Hoặc bạn có thể không thay đổi trạng thái
             orderRepository.save(order);
 
             // 3. Chuẩn bị biến cho Camunda để báo hiệu rằng đơn đã bị xóa (hoàn tất task)

@@ -51,7 +51,7 @@ public class ProductController {
     // Cập nhật sản phẩm (chỉ ADMIN)
     @PutMapping("/products/{productId}")
 //    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateProduct(@PathVariable UUID productId, @RequestBody Product productDetails) {
+    public ResponseEntity<?> updateProduct(@PathVariable("productId") UUID productId, @RequestBody Product productDetails) {
         try {
             Product updatedProduct = productService.updateProduct(productId, productDetails);
             return ResponseEntity.ok(updatedProduct);
@@ -66,7 +66,7 @@ public class ProductController {
     // Xóa sản phẩm (chỉ ADMIN)
     @DeleteMapping("/products/{productId}")
 //    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> deleteProduct(@PathVariable UUID productId) {
+    public ResponseEntity<?> deleteProduct(@PathVariable("productId") UUID productId) {
         try {
             productService.deleteProduct(productId);
             return ResponseEntity.ok("Đã xóa sản phẩm thành công");

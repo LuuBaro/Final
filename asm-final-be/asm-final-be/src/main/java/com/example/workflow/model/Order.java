@@ -37,6 +37,7 @@ public class Order {
         PENDING,       // Chờ xử lý
         CONFIRMED,     // Đã xác nhận
         CANCELED,      // Đã hủy
+        DELETED,       // Đã xóa
         PAID,          // Đã thanh toán
         FAILED         // Thanh toán thất bại
     }

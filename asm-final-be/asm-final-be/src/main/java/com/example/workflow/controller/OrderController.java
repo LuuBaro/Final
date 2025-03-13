@@ -2,6 +2,7 @@ package com.example.workflow.controller;
 
 import com.example.workflow.model.Order;
 import com.example.workflow.model.User;
+import com.example.workflow.repository.OrderRepository;
 import com.example.workflow.service.OrderService;
 import com.example.workflow.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -22,6 +24,31 @@ public class OrderController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    // API lấy tất cả đơn hàng
+    @GetMapping
+    public ResponseEntity<List<Order>> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        return ResponseEntity.ok(orders);
+    }
+
+    // API lấy đơn hàng theo userId
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getOrdersByUserId(@PathVariable("userId") String userId) {
+        try {
+            UUID userUUID = UUID.fromString(userId);
+            List<Order> orders = orderRepository.findAllByUser_Id(userUUID);
+            return ResponseEntity.ok(orders);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body("Invalid userId format");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
+        }
+    }
 
     @PostMapping("/checkout")
     public ResponseEntity<?> checkout() {

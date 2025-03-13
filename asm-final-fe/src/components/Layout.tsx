@@ -57,7 +57,7 @@ export default function Layout() {
           <div className="flex items-center justify-between h-full">
             <div className="flex items-center">
               <Link to="/" className="text-2xl font-bold text-gray-900">
-                Fashion Store
+              Baro Fashion
               </Link>
             </div>
 
@@ -189,45 +189,6 @@ export default function Layout() {
         </AnimatePresence>
       </main>
 
-      <footer className="bg-white text-gray-900">
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Fashion Store</h3>
-              <p className="text-gray-400">
-                Thời trang cao cấp cho mọi người
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Liên kết</h3>
-              <ul className="space-y-2">
-                {navigation.map((item) => (
-                  <li key={item.name}>
-                    <Link
-                      to={item.href}
-                      className="text-gray-400 hover:text-gray-900 transition-colors"
-                    >
-                      {item.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Liên hệ</h3>
-              <address className="text-gray-400 not-italic">
-                <p>123 Đường ABC</p>
-                <p>Quận 1, TP.HCM</p>
-                <p>Email: contact@fashionstore.com</p>
-                <p>Điện thoại: (123) 456-7890</p>
-              </address>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t border-gray-200 text-center text-gray-400">
-            <p>© 2024 Fashion Store. Tất cả quyền được bảo lưu.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

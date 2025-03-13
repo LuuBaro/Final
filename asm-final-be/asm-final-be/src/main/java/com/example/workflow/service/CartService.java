@@ -40,6 +40,7 @@ public class CartService {
         }
     }
 
+    // Thêm sản phẩm vào giỏ hàng
     @Transactional
     public Cart addToCart(UUID productId, Integer quantity) {
         User user = getCurrentUser();
@@ -81,11 +82,13 @@ public class CartService {
         }
     }
 
+    // Lấy danh sách sản phẩm trong giỏ hàng
     public List<Cart> getCartItems() {
         User user = getCurrentUser();
         return cartRepository.findByUserId(user.getId());
     }
 
+    // Cập nhật số lượng sản phẩm trong giỏ hàng
     @Transactional
     public Cart updateCartQuantity(UUID cartId, Integer quantity) {
         User user = getCurrentUser();
@@ -115,6 +118,7 @@ public class CartService {
         return cartRepository.save(cart);
     }
 
+    // Xóa sản phẩm khỏi giỏ hàng
     @Transactional
     public void removeFromCart(UUID cartId) {
         User user = getCurrentUser();

@@ -1,58 +1,70 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Thêm useNavigate
 import { motion } from 'framer-motion';
 import { Trash2, Plus, Minus } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { toast, Toaster } from 'react-hot-toast';
 
 export default function Cart() {
-  const { cart, removeFromCart, updateQuantity, syncCart, user } = useStore(); // Thay fetchCart bằng syncCart
+  const { cart, removeFromCart, updateQuantity, syncCart, user, checkout } = useStore();
+  const navigate = useNavigate(); // Khai báo useNavigate
 
-  // Đồng bộ giỏ hàng khi component mount
   useEffect(() => {
     if (user && user.id) {
       syncCart();
     }
   }, [syncCart, user]);
 
-  // Tính tổng tiền
   const total = cart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0
   );
 
-  // Xử lý tăng số lượng
   const handleIncreaseQuantity = async (cartId, currentQuantity) => {
     try {
       await updateQuantity(cartId, currentQuantity + 1);
     } catch (error) {
       console.error('Lỗi khi tăng số lượng:', error.message);
+      toast.error('Lỗi khi tăng số lượng');
     }
   };
 
-  // Xử lý giảm số lượng
   const handleDecreaseQuantity = async (cartId, currentQuantity) => {
     if (currentQuantity <= 1) {
-      // Nếu số lượng là 1, giảm sẽ xóa sản phẩm
       try {
         await removeFromCart(cartId);
       } catch (error) {
         console.error('Lỗi khi giảm số lượng:', error.message);
+        toast.error('Lỗi khi giảm số lượng');
       }
     } else {
       try {
         await updateQuantity(cartId, currentQuantity - 1);
       } catch (error) {
         console.error('Lỗi khi giảm số lượng:', error.message);
+        toast.error('Lỗi khi giảm số lượng');
       }
     }
   };
 
-  // Xử lý xóa sản phẩm
   const handleRemoveFromCart = async (cartId) => {
     try {
       await removeFromCart(cartId);
     } catch (error) {
       console.error('Lỗi khi xóa sản phẩm:', error.message);
+      toast.error('Lỗi khi xóa sản phẩm');
+    }
+  };
+
+  const handleCheckout = async () => {
+    try {
+      const order = await checkout();
+      toast.success(`Đơn hàng ${order.id} đã được tạo thành công và đang chờ xử lý!`);
+      navigate('/order-confirmation', { state: { order } }); // Chuyển hướng với dữ liệu order
+    } catch (error) {
+      const errorMessage = error.message || 'Lỗi khi tạo đơn hàng';
+      console.error('Lỗi khi thanh toán:', errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -98,7 +110,7 @@ export default function Cart() {
           <div className="lg:col-span-2 space-y-4">
             {cart.map((item, index) => (
               <motion.div
-                key={item.id} // Sử dụng cartId từ BE
+                key={item.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -119,7 +131,6 @@ export default function Cart() {
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
-                  {/* Nút tăng/giảm số lượng */}
                   <div className="flex items-center border rounded-md">
                     <button
                       onClick={() => handleDecreaseQuantity(item.id, item.quantity)}
@@ -135,7 +146,6 @@ export default function Cart() {
                       <Plus className="h-4 w-4" />
                     </button>
                   </div>
-                  {/* Nút xóa sản phẩm */}
                   <button
                     onClick={() => handleRemoveFromCart(item.id)}
                     className="text-red-500 hover:text-red-700 transition-colors"
@@ -165,16 +175,17 @@ export default function Cart() {
                   </div>
                 </div>
               </div>
-              <Link
-                to="/checkout"
+              <button
+                onClick={handleCheckout}
                 className="block w-full bg-indigo-600 text-white text-center py-3 rounded-md hover:bg-indigo-700 transition-colors"
               >
                 Thanh toán
-              </Link>
+              </button>
             </div>
           </div>
         </div>
       </div>
+      <Toaster />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -10,32 +10,52 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useStore(); // Lấy hàm login từ useStore
+  const { login, user } = useStore(); // Lấy cả login và user từ useStore
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true); // Bật trạng thái loading khi bắt đầu xử lý
+    setLoading(true);
 
     try {
       const credentials = { email, password };
-      const response = await apiLogin(credentials); // Gọi API đăng nhập
-      const token = response.token; // Giả định response chứa { token: "..." }
+      const response = await apiLogin(credentials);
+      const { token } = response; // Chỉ lấy token từ response (vì API không trả về role)
 
       if (!token) {
         throw new Error('Không nhận được token từ server');
       }
 
-      login(token); // Gọi useStore.login với token để cập nhật user
-      toast.success('Đăng nhập thành công!');
-      navigate('/'); // Chuyển hướng về trang chủ
+      // Gọi useStore.login với token (role sẽ được lấy từ token trong useStore)
+      login({ token });
+
+      // Không điều hướng ngay, để useEffect xử lý
     } catch (error) {
       console.error('Lỗi đăng nhập:', error.message);
       toast.error(error.message || 'Đăng nhập thất bại!');
     } finally {
-      setLoading(false); // Tắt trạng thái loading sau khi xử lý xong
+      setLoading(false);
     }
   };
+
+  // Lắng nghe sự thay đổi của user để điều hướng
+  useEffect(() => {
+    if (user && !loading) {
+      const userRole = user.role || 'USER';
+      console.log('UserRole sau khi đăng nhập (useEffect):', userRole);
+
+      toast.success('Đăng nhập thành công!');
+
+      // Điều hướng dựa trên role
+      if (userRole === 'ADMIN') {
+        navigate('/admin/dashboard');
+      } else if (userRole === 'USER') {
+        navigate('/');
+      } else {
+        toast.error('Vai trò không hợp lệ!');
+      }
+    }
+  }, [user, loading, navigate]);
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">

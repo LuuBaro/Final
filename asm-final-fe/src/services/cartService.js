@@ -56,10 +56,13 @@ export const addToCart = async (cartItem) => {
 // Cập nhật số lượng
 export const updateCartQuantity = async (cartId, quantity) => {
   try {
-    const response = await apiClient.put(`/cart/${cartId}`, { quantity });
-    return response.data;
+      const response = await apiClient.put(`/cart/${cartId}`, { quantity });
+      console.log('Phản hồi từ server:', response.data);
+      return response.data;
   } catch (error) {
-    throw new Error(error.response?.data || 'Lỗi khi cập nhật số lượng');
+      const errorMessage = error.response?.data || 'Lỗi khi cập nhật số lượng';
+      console.error('Lỗi API:', errorMessage);
+      throw new Error(errorMessage);
   }
 };
 
@@ -69,5 +72,17 @@ export const removeFromCart = async (cartId) => {
     await apiClient.delete(`/cart/${cartId}`);
   } catch (error) {
     throw new Error(error.response?.data || 'Lỗi khi xóa sản phẩm khỏi giỏ hàng');
+  }
+};
+
+// Thanh toán giỏ hàng
+export const checkout = async () => {
+  try {
+    const response = await apiClient.post('/checkout');
+    return response.data; // Trả về thông tin đơn hàng từ backend
+  } catch (error) {
+    const errorMessage = error.response?.data || 'Lỗi khi tạo đơn hàng';
+    console.error('Lỗi khi thanh toán:', errorMessage);
+    throw new Error(errorMessage);
   }
 };

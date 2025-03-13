@@ -33,7 +33,7 @@ public class CategoryController {
 
     // Cập nhật loại sản phẩm
     @PutMapping("/categories/{categoryId}")
-    public ResponseEntity<?> updateCategory(@PathVariable UUID categoryId, @RequestBody Category categoryDetails) {
+    public ResponseEntity<?> updateCategory(@PathVariable("categoryId") UUID categoryId, @RequestBody Category categoryDetails) {
         try {
             Category updatedCategory = categoryService.updateCategory(categoryId, categoryDetails);
             return ResponseEntity.ok(updatedCategory);
@@ -47,7 +47,7 @@ public class CategoryController {
 
     // Xóa loại sản phẩm
     @DeleteMapping("/categories/{categoryId}")
-    public ResponseEntity<?> deleteCategory(@PathVariable UUID categoryId) {
+    public ResponseEntity<?> deleteCategory(@PathVariable("categoryId") UUID categoryId) {
         try {
             categoryService.deleteCategory(categoryId);
             return ResponseEntity.ok("Đã xóa loại sản phẩm thành công");
@@ -68,7 +68,7 @@ public class CategoryController {
 
     // Lấy thông tin một loại sản phẩm theo ID
     @GetMapping("/categories/{categoryId}")
-    public ResponseEntity<?> getCategoryById(@PathVariable UUID categoryId) {
+    public ResponseEntity<?> getCategoryById(@PathVariable("categoryId") UUID categoryId) {
         try {
             Category category = categoryService.getCategoryById(categoryId);
             return ResponseEntity.ok(category);
