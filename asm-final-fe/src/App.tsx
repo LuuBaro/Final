@@ -69,8 +69,6 @@ function AdminLayout() {
     return <Navigate to="/404" replace />;
   }
 
-  console.log('AdminLayout - Access granted for ADMIN', { user });
-
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar onToggle={(collapsed) => setIsSidebarCollapsed(collapsed)} />

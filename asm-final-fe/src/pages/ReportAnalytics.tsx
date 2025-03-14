@@ -13,17 +13,26 @@ const ReportAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [searchDate, setSearchDate] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
+        setErrorMessage('');
+        const validDate = searchDate && /^\d{4}-\d{2}-\d{2}$/.test(searchDate) && !searchDate.includes(':') ? searchDate : null;
         const response = await axios.get('http://localhost:8080/api/report', {
-          params: { date: searchDate, status: statusFilter === 'ALL' ? null : statusFilter },
+          params: { date: validDate, status: statusFilter === 'ALL' ? null : statusFilter },
         });
-        setOrders(response.data);
+        if (response.data && response.data.length > 0 && response.data[0].userName?.includes('Database error')) {
+          setErrorMessage(response.data[0].userName);
+          setOrders([]);
+        } else {
+          setOrders(response.data);
+        }
       } catch (error) {
         console.error('Lỗi khi lấy dữ liệu báo cáo:', error);
+        setErrorMessage('Không thể tải dữ liệu báo cáo. Vui lòng thử lại.');
         setOrders([]);
       } finally {
         setLoading(false);
@@ -32,17 +41,52 @@ const ReportAnalytics = () => {
     fetchOrders();
   }, [searchDate, statusFilter]);
 
-  // Biểu đồ cột: Tổng tiền theo sản phẩm
+  const exportReport = async (format) => {
+    try {
+        setErrorMessage('');
+        const validDate = searchDate && /^\d{4}-\d{2}-\d{2}$/.test(searchDate) && !searchDate.includes(':') ? searchDate : null;
+        const response = await axios.get(`http://localhost:8080/api/export/${format}`, {
+            params: { date: validDate, status: statusFilter === 'ALL' ? null : statusFilter },
+            responseType: 'blob',
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        const fileExtension = format === 'excel' ? 'xlsx' : 'pdf'; // Đảm bảo đuôi .xlsx
+        const currentDate = new Date().toISOString().slice(0, 10);
+        link.setAttribute('download', `report_${currentDate}.${fileExtension}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    } catch (error) {
+        console.error(`Lỗi khi xuất báo cáo ${format}:`, error);
+        if (error.response && error.response.data) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const errorJson = JSON.parse(reader.result);
+                    setErrorMessage(errorJson.error || `Không thể xuất báo cáo ${format}.`);
+                } catch (e) {
+                    setErrorMessage(`Không thể xuất báo cáo ${format}. Vui lòng thử lại.`);
+                }
+            };
+            reader.readAsText(error.response.data);
+        } else {
+            setErrorMessage(`Không thể xuất báo cáo ${format}. Vui lòng thử lại.`);
+        }
+    }
+};
+
   const barChartData = {
-    labels: [...new Set(orders.flatMap(o => o.items.map(i => i.productName)))],
+    labels: [...new Set(orders.flatMap(o => o.items?.map(i => i.productName) || []))],
     datasets: [
       {
         label: 'Tổng tiền (VND)',
-        data: [...new Set(orders.flatMap(o => o.items.map(i => i.productName)))].map(productName =>
+        data: [...new Set(orders.flatMap(o => o.items?.map(i => i.productName) || []))].map(productName =>
           orders
-            .flatMap(o => o.items)
+            .flatMap(o => o.items || [])
             .filter(i => i.productName === productName)
-            .reduce((sum, i) => sum + Number(i.subtotal), 0)
+            .reduce((sum, i) => sum + Number(i.subtotal || 0), 0)
         ),
         backgroundColor: 'rgba(75, 192, 192, 0.6)',
         borderColor: 'rgba(75, 192, 192, 1)',
@@ -59,31 +103,22 @@ const ReportAnalytics = () => {
     },
   };
 
-  // Biểu đồ tròn: Tỷ lệ trạng thái đơn hàng
   const pieStatusData = {
-    labels: [...new Set(orders.map(o => o.status))],
+    labels: [...new Set(orders.map(o => o.status || 'Không xác định'))],
     datasets: [
       {
         label: 'Số lượng',
-        data: [...new Set(orders.map(o => o.status))].map(status =>
+        data: [...new Set(orders.map(o => o.status || 'Không xác định'))].map(status =>
           orders.filter(o => o.status === status).length
         ),
         backgroundColor: [
-          'rgba(255, 99, 132, 0.6)',  // PENDING
-          'rgba(54, 162, 235, 0.6)',  // CONFIRMED
-          'rgba(255, 206, 86, 0.6)',  // CANCELED
-          'rgba(75, 192, 192, 0.6)',  // PAID
-          'rgba(153, 102, 255, 0.6)', // FAILED
-          'rgba(255, 159, 64, 0.6)',  // APPROVED
-          'rgba(201, 203, 207, 0.6)', // DELETED
+          'rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)',
+          'rgba(75, 192, 192, 0.6)', 'rgba(153, 102, 255, 0.6)', 'rgba(255, 159, 64, 0.6)',
+          'rgba(201, 203, 207, 0.6)',
         ],
         borderColor: [
-          'rgba(255, 99, 132, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(153, 102, 255, 1)',
-          'rgba(255, 159, 64, 1)',
+          'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)',
           'rgba(201, 203, 207, 1)',
         ],
         borderWidth: 1,
@@ -99,28 +134,21 @@ const ReportAnalytics = () => {
     },
   };
 
-  // Biểu đồ tròn: Tỷ lệ sản phẩm
   const pieProductData = {
-    labels: [...new Set(orders.flatMap(o => o.items.map(i => i.productName)))],
+    labels: [...new Set(orders.flatMap(o => o.items?.map(i => i.productName) || []))],
     datasets: [
       {
         label: 'Số lượng',
-        data: [...new Set(orders.flatMap(o => o.items.map(i => i.productName)))].map(productName =>
-          orders.flatMap(o => o.items).filter(i => i.productName === productName).length
+        data: [...new Set(orders.flatMap(o => o.items?.map(i => i.productName) || []))].map(productName =>
+          orders.flatMap(o => o.items || []).filter(i => i.productName === productName).length
         ),
         backgroundColor: [
-          'rgba(153, 102, 255, 0.6)',
-          'rgba(255, 159, 64, 0.6)',
-          'rgba(75, 192, 192, 0.6)',
-          'rgba(54, 162, 235, 0.6)',
-          'rgba(255, 99, 132, 0.6)',
+          'rgba(153, 102, 255, 0.6)', 'rgba(255, 159, 64, 0.6)', 'rgba(75, 192, 192, 0.6)',
+          'rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)',
         ],
         borderColor: [
-          'rgba(153, 102, 255, 1)',
-          'rgba(255, 159, 64, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 99, 132, 1)',
+          'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)', 'rgba(75, 192, 192, 1)',
+          'rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)',
         ],
         borderWidth: 1,
       },
@@ -135,25 +163,6 @@ const ReportAnalytics = () => {
     },
   };
 
-  // Hàm xuất báo cáo
-  const exportReport = async (format) => {
-    try {
-      const response = await axios.get(`http://localhost:8080/api/export/${format}`, {
-        params: { date: searchDate, status: statusFilter === 'ALL' ? null : statusFilter },
-        responseType: 'blob',
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `report_${format}_${new Date().toISOString().slice(0, 10)}.${format}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error(`Lỗi khi xuất báo cáo ${format}:`, error);
-    }
-  };
-
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -165,7 +174,6 @@ const ReportAnalytics = () => {
     >
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Báo cáo thống kê</h2>
 
-      {/* Bộ lọc và tìm kiếm */}
       <div className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex gap-4 w-full md:w-auto">
           <div className="relative w-full md:w-64">
@@ -207,54 +215,70 @@ const ReportAnalytics = () => {
         </div>
       </div>
 
-      {/* Biểu đồ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-gray-50 p-4 rounded-lg shadow">
-          <Bar data={barChartData} options={barChartOptions} />
+      {errorMessage && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+          {errorMessage}
         </div>
-        <div className="bg-gray-50 p-4 rounded-lg shadow">
-          <Pie data={pieStatusData} options={pieStatusOptions} />
-        </div>
-        <div className="bg-gray-50 p-4 rounded-lg shadow">
-          <Pie data={pieProductData} options={pieProductOptions} />
-        </div>
-      </div>
+      )}
 
-      {/* Bảng dữ liệu chi tiết */}
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-indigo-600 text-white">
-              <th className="p-3">Mã đơn</th>
-              <th className="p-3">Khách hàng</th>
-              <th className="p-3">Ngày đặt</th>
-              <th className="p-3">Trạng thái</th>
-              <th className="p-3">Tổng tiền (VND)</th>
-              <th className="p-3">Sản phẩm</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <motion.tr
-                key={order.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="border-b hover:bg-gray-50"
-              >
-                <td className="p-3">{order.id}</td>
-                <td className="p-3">{order.userName}</td> {/* Sửa từ user.name thành userName */}
-                <td className="p-3">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
-                <td className="p-3">{order.status}</td>
-                <td className="p-3">{Number(order.totalAmount).toLocaleString('vi-VN')}</td>
-                <td className="p-3">
-                  {order.items.map(i => `${i.productName} (x${i.quantity})`).join(', ')}
-                </td>
-              </motion.tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {orders.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <Bar data={barChartData} options={barChartOptions} />
+          </div>
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <Pie data={pieStatusData} options={pieStatusOptions} />
+          </div>
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <Pie data={pieProductData} options={pieProductOptions} />
+          </div>
+        </div>
+      )}
+
+      {orders.length > 0 ? (
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-indigo-600 text-white">
+                <th className="p-3">Mã đơn</th>
+                <th className="p-3">Khách hàng</th>
+                <th className="p-3">Ngày đặt</th>
+                <th className="p-3">Trạng thái</th>
+                <th className="p-3">Tổng tiền (VND)</th>
+                <th className="p-3">Sản phẩm</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <motion.tr
+                  key={order.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="border-b hover:bg-gray-50"
+                >
+                  <td className="p-3">{order.id || 'N/A'}</td>
+                  <td className="p-3">{order.userName || 'N/A'}</td>
+                  <td className="p-3">
+                    {order.createdAt ? new Date(order.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                  </td>
+                  <td className="p-3">{order.status || 'N/A'}</td>
+                  <td className="p-3">
+                    {order.totalAmount ? Number(order.totalAmount).toLocaleString('vi-VN') : 'N/A'}
+                  </td>
+                  <td className="p-3">
+                    {order.items?.map(i => `${i.productName} (x${i.quantity})`).join(', ') || 'N/A'}
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        !errorMessage && (
+          <div className="text-center text-gray-500 mt-6">Không có dữ liệu để hiển thị.</div>
+        )
+      )}
     </motion.div>
   );
 };

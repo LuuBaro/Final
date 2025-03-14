@@ -33,7 +33,7 @@
     <title>
         <band height="70" splitType="Stretch">
             <staticText>
-                <reportElement x="0" y="10" width="555" height="40" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="title-uuid">
+                <reportElement x="0" y="10" width="555" height="40" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="550e8400-e29b-41d4-a716-446655440000">
                     <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
@@ -42,7 +42,7 @@
                 <text><![CDATA[BÁO CÁO THỐNG KÊ ĐƠN HÀNG]]></text>
             </staticText>
             <line>
-                <reportElement x="0" y="60" width="555" height="1" forecolor="#4B5EAA" uuid="line-uuid"/>
+                <reportElement x="0" y="60" width="555" height="1" forecolor="#4B5EAA" uuid="6ba7b810-9dad-11d1-80b4-00c04fd430c8"/>
             </line>
         </band>
     </title>
@@ -51,7 +51,7 @@
     <pageHeader>
         <band height="35">
             <textField isBlankWhenNull="true">
-                <reportElement x="0" y="10" width="300" height="20" forecolor="#666666" uuid="filter-uuid"/>
+                <reportElement x="0" y="10" width="300" height="20" forecolor="#666666" uuid="e4da3b7f-ffb0-4e2b-8e4a-6e9b5b4e7f8c"/>
                 <textElement>
                     <font fontName="SansSerif" size="10"/>
                 </textElement>
@@ -64,7 +64,7 @@
     <columnHeader>
         <band height="30" splitType="Stretch">
             <staticText>
-                <reportElement mode="Opaque" x="0" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="ch1-uuid"/>
+                <reportElement mode="Opaque" x="0" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
                 <box>
                     <topPen lineWidth="1.0" lineColor="#4B5EAA"/>
                     <leftPen lineWidth="1.0" lineColor="#4B5EAA"/>
@@ -77,7 +77,7 @@
                 <text><![CDATA[Mã đơn]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" x="90" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="ch2-uuid"/>
+                <reportElement mode="Opaque" x="90" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="b2c3d4e5-f678-9012-bcde-f12345678901"/>
                 <box>
                     <topPen lineWidth="1.0" lineColor="#4B5EAA"/>
                     <leftPen lineWidth="1.0" lineColor="#4B5EAA"/>
@@ -90,7 +90,7 @@
                 <text><![CDATA[Khách hàng]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" x="180" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="ch3-uuid"/>
+                <reportElement mode="Opaque" x="180" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="c3d4e5f6-7890-1234-cdef-123456789012"/>
                 <box>
                     <topPen lineWidth="1.0" lineColor="#4B5EAA"/>
                     <leftPen lineWidth="1.0" lineColor="#4B5EAA"/>
@@ -103,7 +103,7 @@
                 <text><![CDATA[Ngày đặt]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" x="270" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="ch4-uuid"/>
+                <reportElement mode="Opaque" x="270" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="d4e5f678-9012-3456-def1-234567890123"/>
                 <box>
                     <topPen lineWidth="1.0" lineColor="#4B5EAA"/>
                     <leftPen lineWidth="1.0" lineColor="#4B5EAA"/>
@@ -116,7 +116,7 @@
                 <text><![CDATA[Trạng thái]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" x="360" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="ch5-uuid"/>
+                <reportElement mode="Opaque" x="360" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="e5f67890-1234-5678-ef12-345678901234"/>
                 <box>
                     <topPen lineWidth="1.0" lineColor="#4B5EAA"/>
                     <leftPen lineWidth="1.0" lineColor="#4B5EAA"/>
@@ -129,7 +129,7 @@
                 <text><![CDATA[Tổng tiền]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" x="450" y="0" width="105" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="ch6-uuid"/>
+                <reportElement mode="Opaque" x="450" y="0" width="105" height="30" forecolor="#FFFFFF" backcolor="#4B5EAA" uuid="f6789012-3456-7890-1234-567890123456"/>
                 <box>
                     <topPen lineWidth="1.0" lineColor="#4B5EAA"/>
                     <leftPen lineWidth="1.0" lineColor="#4B5EAA"/>
@@ -148,7 +148,7 @@
     <detail>
         <band height="30" splitType="Stretch">
             <textField>
-                <reportElement x="0" y="0" width="90" height="30" uuid="d1-uuid"/>
+                <reportElement x="0" y="0" width="90" height="30" uuid="12345678-9012-3456-7890-123456789012"/>
                 <box>
                     <topPen lineWidth="0.5" lineColor="#CCCCCC"/>
                     <leftPen lineWidth="0.5" lineColor="#CCCCCC"/>
@@ -161,7 +161,7 @@
                 <textFieldExpression><![CDATA[$F{order_id}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="90" y="0" width="90" height="30" uuid="d2-uuid"/>
+                <reportElement x="90" y="0" width="90" height="30" uuid="23456789-0123-4567-8901-234567890123"/>
                 <box>
                     <topPen lineWidth="0.5" lineColor="#CCCCCC"/>
                     <leftPen lineWidth="0.5" lineColor="#CCCCCC"/>
@@ -174,7 +174,7 @@
                 <textFieldExpression><![CDATA[$F{user_name}]]></textFieldExpression>
             </textField>
             <textField pattern="dd/MM/yyyy">
-                <reportElement x="180" y="0" width="90" height="30" uuid="d3-uuid"/>
+                <reportElement x="180" y="0" width="90" height="30" uuid="34567890-1234-5678-9012-345678901234"/>
                 <box>
                     <topPen lineWidth="0.5" lineColor="#CCCCCC"/>
                     <leftPen lineWidth="0.5" lineColor="#CCCCCC"/>
@@ -187,7 +187,7 @@
                 <textFieldExpression><![CDATA[$F{created_at}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="270" y="0" width="90" height="30" uuid="d4-uuid"/>
+                <reportElement x="270" y="0" width="90" height="30" uuid="45678901-2345-6789-0123-456789012345"/>
                 <box>
                     <topPen lineWidth="0.5" lineColor="#CCCCCC"/>
                     <leftPen lineWidth="0.5" lineColor="#CCCCCC"/>
@@ -200,7 +200,7 @@
                 <textFieldExpression><![CDATA[$F{status}]]></textFieldExpression>
             </textField>
             <textField pattern="#,##0.00">
-                <reportElement x="360" y="0" width="90" height="30" forecolor="#4B5EAA" uuid="d5-uuid"/>
+                <reportElement x="360" y="0" width="90" height="30" forecolor="#4B5EAA" uuid="56789012-3456-7890-1234-567890123456"/>
                 <box>
                     <topPen lineWidth="0.5" lineColor="#CCCCCC"/>
                     <leftPen lineWidth="0.5" lineColor="#CCCCCC"/>
@@ -213,7 +213,7 @@
                 <textFieldExpression><![CDATA[$F{total_amount}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="450" y="0" width="105" height="30" uuid="d6-uuid"/>
+                <reportElement x="450" y="0" width="105" height="30" uuid="67890123-4567-8901-2345-678901234567"/>
                 <box>
                     <topPen lineWidth="0.5" lineColor="#CCCCCC"/>
                     <leftPen lineWidth="0.5" lineColor="#CCCCCC"/>
@@ -232,10 +232,10 @@
     <columnFooter>
         <band height="45" splitType="Stretch">
             <line>
-                <reportElement x="0" y="10" width="555" height="1" forecolor="#4B5EAA" uuid="cf-line-uuid"/>
+                <reportElement x="0" y="10" width="555" height="1" forecolor="#4B5EAA" uuid="78901234-5678-9012-3456-789012345678"/>
             </line>
             <textField evaluationTime="Report">
-                <reportElement x="360" y="20" width="195" height="20" forecolor="#4B5EAA" uuid="cf-total-uuid"/>
+                <reportElement x="360" y="20" width="195" height="20" forecolor="#4B5EAA" uuid="89012345-6789-0123-4567-890123456789"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="10" isBold="true"/>
                 </textElement>
@@ -248,14 +248,14 @@
     <pageFooter>
         <band height="54" splitType="Stretch">
             <textField evaluationTime="Now">
-                <reportElement x="0" y="20" width="200" height="20" forecolor="#666666" uuid="pf-date-uuid"/>
+                <reportElement x="0" y="20" width="200" height="20" forecolor="#666666" uuid="90123456-7890-1234-5678-901234567890"/>
                 <textElement verticalAlignment="Middle">
                     <font fontName="SansSerif" size="9"/>
                 </textElement>
                 <textFieldExpression><![CDATA["In ngày: " + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date())]]></textFieldExpression>
             </textField>
             <textField evaluationTime="Report">
-                <reportElement x="455" y="20" width="100" height="20" forecolor="#666666" uuid="pf-page-uuid"/>
+                <reportElement x="455" y="20" width="100" height="20" forecolor="#666666" uuid="01234567-8901-2345-6789-012345678901"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="9"/>
                 </textElement>

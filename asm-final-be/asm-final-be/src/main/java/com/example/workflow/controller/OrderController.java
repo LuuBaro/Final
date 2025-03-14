@@ -22,8 +22,10 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.sql.DataSource;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.sql.*;
 import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @RestController
@@ -105,14 +107,12 @@ public class OrderController {
     @GetMapping("/report")
     public ResponseEntity<List<OrderReportDTO>> getOrderReport(
             @RequestParam(name = "date", required = false) String date,
-            @RequestParam(name = "status", required = false) String status) throws SQLException {
+            @RequestParam(name = "status", required = false) String status) {
         try (Connection conn = dataSource.getConnection();
-             CallableStatement stmt = conn.prepareCall("{ ? = call get_order_report(?, ?) }")) {
-            stmt.registerOutParameter(1, Types.OTHER); // Đăng ký tham số trả về
-            stmt.setObject(2, date != null && !date.isEmpty() ? java.sql.Date.valueOf(date) : null);
-            stmt.setString(3, status);
-            stmt.execute();
-            ResultSet rs = stmt.getObject(1, ResultSet.class); // Lấy ResultSet từ hàm PostgreSQL
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM get_order_report(?, ?)")) {
+            stmt.setObject(1, date != null && !date.isEmpty() ? java.sql.Date.valueOf(date) : null);
+            stmt.setString(2, status);
+            ResultSet rs = stmt.executeQuery();
             List<OrderReportDTO> orders = new ArrayList<>();
             while (rs.next()) {
                 OrderReportDTO dto = new OrderReportDTO();
@@ -123,7 +123,6 @@ public class OrderController {
                 dto.setTotalAmount(rs.getBigDecimal("total_amount"));
                 dto.setProducts(rs.getString("products"));
 
-                // Lấy danh sách items
                 try (PreparedStatement itemStmt = conn.prepareStatement(
                         "SELECT oi.quantity, p.name, oi.price, oi.subtotal " +
                                 "FROM order_items oi JOIN products p ON oi.product_id = p.id " +
@@ -144,25 +143,75 @@ public class OrderController {
                 orders.add(dto);
             }
             return ResponseEntity.ok(orders);
+        } catch (IllegalArgumentException e) {
+            OrderReportDTO errorDto = new OrderReportDTO();
+            errorDto.setUserName("Invalid date format. Expected YYYY-MM-DD");
+            return ResponseEntity.badRequest().body(Collections.singletonList(errorDto));
+        } catch (SQLException e) {
+            e.printStackTrace();
+            OrderReportDTO errorDto = new OrderReportDTO();
+            errorDto.setUserName("Database error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonList(errorDto));
         }
     }
 
     @GetMapping("/export/{format}")
     public ResponseEntity<byte[]> exportReport(
-            @PathVariable String format,
+            @PathVariable("format") String format,
             @RequestParam(name = "date", required = false) String date,
-            @RequestParam(name = "status", required = false) String status) throws Exception {
+            @RequestParam(name = "status", required = false) String status) {
         try (Connection conn = dataSource.getConnection()) {
-            JasperReport jasperReport = JasperCompileManager.compileReport(
-                    getClass().getResourceAsStream("/reports/order_report.jrxml"));
+            // Kiểm tra định dạng date
+            String validDate = null;
+            if (date != null && !date.isEmpty()) {
+                if (date.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    try {
+                        java.sql.Date.valueOf(date);
+                        validDate = date;
+                    } catch (IllegalArgumentException e) {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.APPLICATION_JSON);
+                        return new ResponseEntity<>(
+                                ("{\"error\": \"Invalid date format. Expected YYYY-MM-DD\"}").getBytes(),
+                                headers,
+                                HttpStatus.BAD_REQUEST
+                        );
+                    }
+                } else {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON);
+                    return new ResponseEntity<>(
+                            ("{\"error\": \"Invalid date format. Expected YYYY-MM-DD\"}").getBytes(),
+                            headers,
+                            HttpStatus.BAD_REQUEST
+                    );
+                }
+            }
+
+            // Kiểm tra tài nguyên JRXML
+            InputStream jrxmlInputStream = getClass().getResourceAsStream("/reports/order_report.jrxml");
+            if (jrxmlInputStream == null) {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                return new ResponseEntity<>(
+                        ("{\"error\": \"Report template 'order_report.jrxml' not found in resources/reports/\"}").getBytes(),
+                        headers,
+                        HttpStatus.INTERNAL_SERVER_ERROR
+                );
+            }
+
+            JasperReport jasperReport = JasperCompileManager.compileReport(jrxmlInputStream);
             Map<String, Object> parameters = new HashMap<>();
-            parameters.put("DATE_PARAM", date);
+            parameters.put("DATE_PARAM", validDate);
             parameters.put("STATUS_PARAM", status);
             JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, conn);
 
             byte[] reportBytes;
             String contentType;
             String fileName;
+            String currentDate = new SimpleDateFormat("yyyy-MM-dd").format(new Date(System.currentTimeMillis()));
+
             if ("excel".equalsIgnoreCase(format)) {
                 JRXlsxExporter exporter = new JRXlsxExporter();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -171,17 +220,26 @@ public class OrderController {
                 exporter.exportReport();
                 reportBytes = baos.toByteArray();
                 contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                fileName = "report.xlsx";
+                fileName = "report_" + currentDate + ".xlsx"; // Đảm bảo đuôi là .xlsx
             } else {
                 reportBytes = JasperExportManager.exportReportToPdf(jasperPrint);
                 contentType = "application/pdf";
-                fileName = "report.pdf";
+                fileName = "report_" + currentDate + ".pdf";
             }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(contentType));
             headers.setContentDispositionFormData("attachment", fileName);
             return new ResponseEntity<>(reportBytes, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            return new ResponseEntity<>(
+                    ("{\"error\": \"Error generating report: " + e.getMessage() + "\"}").getBytes(),
+                    headers,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 }
