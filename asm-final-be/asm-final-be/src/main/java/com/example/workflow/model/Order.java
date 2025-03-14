@@ -39,6 +39,7 @@ public class Order {
         CANCELED,      // Đã hủy
         DELETED,       // Đã xóa
         PAID,          // Đã thanh toán
-        FAILED         // Thanh toán thất bại
+        FAILED,        // Thanh toán thất bại
+        APPROVED       // Bắt đầu giao hàng
     }
 }

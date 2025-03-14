@@ -4,10 +4,9 @@ import com.example.workflow.repository.OrderRepository;
 import com.example.workflow.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -52,5 +51,17 @@ public class CamundaController {
     @PutMapping("/approve-stock")
     public ResponseEntity<String> approveStock(@RequestParam("orderId") String orderId) {
         return orderService.approveStock(orderId);
+    }
+
+    // API xác nhận thanh toán thành công
+    @PutMapping("/complete-payment-success")
+    public ResponseEntity<?> completePaymentSuccess(@RequestParam("orderId") String orderId) {
+        return orderService.completePaymentSuccess(orderId);
+    }
+
+    // API xác nhận thanh toán thất bại
+    @PutMapping("/complete-payment-failure")
+    public ResponseEntity<?> completePaymentFailure(@RequestParam("orderId") String orderId) {
+        return orderService.completePaymentFailure(orderId);
     }
 }

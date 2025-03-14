@@ -1,23 +1,36 @@
 package com.example.workflow.controller;
 
+import com.example.workflow.dto.OrderItemDTO;
+import com.example.workflow.dto.OrderReportDTO;
 import com.example.workflow.model.Order;
 import com.example.workflow.model.User;
 import com.example.workflow.repository.OrderRepository;
 import com.example.workflow.service.OrderService;
 import com.example.workflow.service.UserService;
+import net.sf.jasperreports.engine.*;
+import net.sf.jasperreports.engine.export.ooxml.JRXlsxExporter;
+import net.sf.jasperreports.export.SimpleExporterInput;
+import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.UUID;
+import javax.sql.DataSource;
+import java.io.ByteArrayOutputStream;
+import java.sql.*;
+import java.sql.Date;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api")
 public class OrderController {
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private OrderService orderService;
@@ -86,6 +99,89 @@ public class OrderController {
             return userService.getUserById(userId);
         } else {
             throw new RuntimeException("Không tìm thấy thông tin người dùng. Vui lòng đăng nhập.");
+        }
+    }
+
+    @GetMapping("/report")
+    public ResponseEntity<List<OrderReportDTO>> getOrderReport(
+            @RequestParam(name = "date", required = false) String date,
+            @RequestParam(name = "status", required = false) String status) throws SQLException {
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{ ? = call get_order_report(?, ?) }")) {
+            stmt.registerOutParameter(1, Types.OTHER); // Đăng ký tham số trả về
+            stmt.setObject(2, date != null && !date.isEmpty() ? java.sql.Date.valueOf(date) : null);
+            stmt.setString(3, status);
+            stmt.execute();
+            ResultSet rs = stmt.getObject(1, ResultSet.class); // Lấy ResultSet từ hàm PostgreSQL
+            List<OrderReportDTO> orders = new ArrayList<>();
+            while (rs.next()) {
+                OrderReportDTO dto = new OrderReportDTO();
+                dto.setId(UUID.fromString(rs.getString("order_id")));
+                dto.setUserName(rs.getString("user_name"));
+                dto.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                dto.setStatus(rs.getString("status"));
+                dto.setTotalAmount(rs.getBigDecimal("total_amount"));
+                dto.setProducts(rs.getString("products"));
+
+                // Lấy danh sách items
+                try (PreparedStatement itemStmt = conn.prepareStatement(
+                        "SELECT oi.quantity, p.name, oi.price, oi.subtotal " +
+                                "FROM order_items oi JOIN products p ON oi.product_id = p.id " +
+                                "WHERE oi.order_id = ?")) {
+                    itemStmt.setObject(1, UUID.fromString(rs.getString("order_id")));
+                    ResultSet itemRs = itemStmt.executeQuery();
+                    List<OrderItemDTO> items = new ArrayList<>();
+                    while (itemRs.next()) {
+                        OrderItemDTO item = new OrderItemDTO();
+                        item.setQuantity(itemRs.getInt("quantity"));
+                        item.setProductName(itemRs.getString("name"));
+                        item.setPrice(itemRs.getBigDecimal("price"));
+                        item.setSubtotal(itemRs.getBigDecimal("subtotal"));
+                        items.add(item);
+                    }
+                    dto.setItems(items);
+                }
+                orders.add(dto);
+            }
+            return ResponseEntity.ok(orders);
+        }
+    }
+
+    @GetMapping("/export/{format}")
+    public ResponseEntity<byte[]> exportReport(
+            @PathVariable String format,
+            @RequestParam(name = "date", required = false) String date,
+            @RequestParam(name = "status", required = false) String status) throws Exception {
+        try (Connection conn = dataSource.getConnection()) {
+            JasperReport jasperReport = JasperCompileManager.compileReport(
+                    getClass().getResourceAsStream("/reports/order_report.jrxml"));
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("DATE_PARAM", date);
+            parameters.put("STATUS_PARAM", status);
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, conn);
+
+            byte[] reportBytes;
+            String contentType;
+            String fileName;
+            if ("excel".equalsIgnoreCase(format)) {
+                JRXlsxExporter exporter = new JRXlsxExporter();
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+                exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(baos));
+                exporter.exportReport();
+                reportBytes = baos.toByteArray();
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                fileName = "report.xlsx";
+            } else {
+                reportBytes = JasperExportManager.exportReportToPdf(jasperPrint);
+                contentType = "application/pdf";
+                fileName = "report.pdf";
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(contentType));
+            headers.setContentDispositionFormData("attachment", fileName);
+            return new ResponseEntity<>(reportBytes, headers, HttpStatus.OK);
         }
     }
 }

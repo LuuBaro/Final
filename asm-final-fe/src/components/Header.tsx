@@ -1,4 +1,3 @@
-// src/components/Header.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
@@ -11,6 +10,7 @@ import {
   Search,
 } from "lucide-react";
 import { useStore } from '../store/useStore';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const Header = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -19,6 +19,7 @@ const Header = () => {
   const [userName, setUserName] = useState("");
   const userMenuRef = useRef(null);
   const { user, logout } = useStore(); // Lấy user và logout từ useStore
+  const navigate = useNavigate(); // Khởi tạo useNavigate
 
   // Cập nhật userName khi user thay đổi
   useEffect(() => {
@@ -48,7 +49,7 @@ const Header = () => {
 
   // Xử lý đăng xuất
   const handleLogout = () => {
-    logout(); // Gọi hàm logout từ useStore
+    logout(navigate); // Truyền navigate vào hàm logout
     setUserName(""); // Reset userName sau khi đăng xuất
     setShowUserMenu(false); // Đóng menu người dùng
   };

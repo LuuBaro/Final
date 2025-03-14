@@ -49,6 +49,7 @@ export default function Orders() {
       PAID: 'Đã thanh toán',
       FAILED: 'Thanh toán thất bại',
       DELETED: 'Đã xóa',
+      APPROVED: 'Đang giao hàng', // Thêm trạng thái APPROVED
     };
     return statusMap[status] || status;
   };
@@ -68,7 +69,6 @@ export default function Orders() {
                   await fetchOrders();
                   toast.dismiss(t.id);
                 } catch (error) {
-                  console.error('Lỗi khi hủy đơn hàng:', error.message);
                   toast.error(error.message);
                   toast.dismiss(t.id);
                 }
@@ -105,7 +105,6 @@ export default function Orders() {
                   await fetchOrders();
                   toast.dismiss(t.id);
                 } catch (error) {
-                  console.error('Lỗi khi xóa đơn hàng:', error.message);
                   toast.error(error.message);
                   toast.dismiss(t.id);
                 }
@@ -140,7 +139,7 @@ export default function Orders() {
   const filterOrdersByTab = (tab, ordersList = orders) => {
     let filtered = ordersList;
     if (tab === 'ALL') {
-      filtered = ordersList.filter((order) => order.status !== 'DELETED');
+      filtered = ordersList.filter((order) => order.status !== 'DELETED'); // Loại trừ DELETED khỏi tab ALL
     } else {
       filtered = ordersList.filter((order) => order.status === tab);
     }
@@ -219,7 +218,7 @@ export default function Orders() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="mb-8 flex justify-center space-x-2 flex-wrap gap-2"
         >
-          {['ALL', 'PENDING', 'CONFIRMED', 'CANCELED', 'PAID', 'FAILED', 'DELETED'].map((tab) => (
+          {['ALL', 'PENDING', 'CONFIRMED', 'PAID', 'APPROVED', 'FAILED', 'CANCELED', 'DELETED'].map((tab) => (
             <button
               key={tab}
               onClick={() => handleTabClick(tab)}
@@ -299,6 +298,8 @@ export default function Orders() {
                             ? 'bg-red-100 text-red-800'
                             : order.status === 'PAID'
                             ? 'bg-blue-100 text-blue-800'
+                            : order.status === 'APPROVED'
+                            ? 'bg-teal-100 text-teal-800' // Màu cho APPROVED
                             : order.status === 'FAILED'
                             ? 'bg-gray-100 text-gray-800'
                             : order.status === 'DELETED'
@@ -321,7 +322,7 @@ export default function Orders() {
                           Hủy đơn hàng
                         </button>
                       )}
-                      {order.status === 'CANCELED' && (
+                      {(order.status === 'CANCELED' || order.status === 'FAILED') && (
                         <button
                           onClick={() => handleDeleteOrder(order.id)}
                           className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors shadow-md"

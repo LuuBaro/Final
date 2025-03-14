@@ -380,4 +380,92 @@ public class OrderService {
             return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
         }
     }
+
+    // Xác nhận thanh toán thành công
+    public ResponseEntity<?> completePaymentSuccess( String orderId) {
+        try {
+            UUID orderUUID;
+            try {
+                orderUUID = UUID.fromString(orderId);
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body("❌ Invalid orderId format");
+            }
+
+            Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
+            Order order = optionalOrder.get();
+
+            if (optionalOrder.isEmpty()) {
+                return ResponseEntity.badRequest().body("❌ Order not found");
+            }
+
+            // Cập nhật trạng thái duyệt
+            order.setStatus(Order.OrderStatus.APPROVED);
+            orderRepository.save(order);
+
+            // Tìm Task "Thanh toán thành công"
+            Task task = taskService.createTaskQuery()
+                    .processInstanceBusinessKey(orderUUID.toString()) // Tìm theo orderId
+                    .taskDefinitionKey("Activity_0ardm9h") // ID của User Task "Thanh toán thành công"
+                    .singleResult();
+
+            if (task == null) {
+                return ResponseEntity.badRequest().body("❌ Không tìm thấy User Task 'Thanh toán thành công' cho orderId: " + orderId);
+            }
+
+            // Hoàn thành Task => Camunda sẽ tự động đi đến End Event
+            taskService.complete(task.getId());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "✅ Đơn hàng đã hoàn tất, bắt đầu giao hàng!",
+                    "orderId", orderId
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
+        }
+    }
+
+    // Xác nhận thanh toán thất bại
+    public ResponseEntity<?> completePaymentFailure(String orderId) {
+        try {
+            UUID orderUUID;
+            try {
+                orderUUID = UUID.fromString(orderId);
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body("❌ Invalid orderId format");
+            }
+
+            Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
+            Order order = optionalOrder.get();
+
+            if (optionalOrder.isEmpty()) {
+                return ResponseEntity.badRequest().body("❌ Order not found");
+            }
+
+            // Cập nhật trạng thái duyệt
+            order.setStatus(Order.OrderStatus.DELETED);
+            orderRepository.save(order);
+
+            // Tìm Task "Thanh toán thất bại"
+            Task task = taskService.createTaskQuery()
+                    .processInstanceBusinessKey(orderUUID.toString()) // Tìm theo orderId
+                    .taskDefinitionKey("Activity_0vqplu0") // ID của User Task "Thanh toán thất bại"
+                    .singleResult();
+
+            if (task == null) {
+                return ResponseEntity.badRequest().body("❌ Không tìm thấy User Task 'Thanh toán thất bại' cho orderId: " + orderId);
+            }
+
+            // Hoàn thành Task => Camunda sẽ tự động kết thúc quy trình
+            taskService.complete(task.getId());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "❌ Thanh toán thất bại, đơn hàng đã bị hủy!",
+                    "orderId", orderId
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
+        }
+    }
 }

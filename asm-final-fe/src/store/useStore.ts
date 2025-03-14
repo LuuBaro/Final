@@ -45,27 +45,31 @@ export const useStore = create((set, get) => {
     user: initialUser,
     cart: [],
 
-    login: ({ token, role }) => {
+    login: ({ token, role, navigate }) => { // Thêm navigate làm tham số
       if (!token) {
         console.warn('Không có token để đăng nhập');
         return;
       }
       try {
         Cookies.set('authToken', token, { expires: 7 });
-
         const decoded = jwtDecode(token);
         const userData = {
           id: decoded.userId || decoded.sub || null,
           name: decoded.fullName || decoded.name || 'Người dùng',
           email: decoded.email || null,
-          role: role || decoded.roles || 'USER', // Ưu tiên role từ tham số, nếu không thì lấy roles từ token
+          role: role || decoded.roles || 'USER',
         };
-
-        console.log('UserData sau khi đăng nhập:', userData); // Debug
-
+        console.log('UserData sau khi đăng nhập:', userData);
+  
         if (userData) {
           set({ user: userData });
           syncCart();
+          // Điều hướng dựa trên role
+          if (userData.role === 'ADMIN' && navigate) {
+            navigate('/admin/dashboard');
+          } else if (navigate) {
+            navigate('/'); // Điều hướng USER về trang chủ
+          }
         } else {
           console.error('Không thể decode token để lấy thông tin user');
           Cookies.remove('authToken');
@@ -78,12 +82,11 @@ export const useStore = create((set, get) => {
       }
     },
 
-    logout: () => {
+    logout: (navigate) => {
       Cookies.remove('authToken');
       set({ user: null, cart: [] });
-      const navigate = useNavigate();
-      navigate('/');
-    },
+      navigate('/login'); // Chuyển hướng về trang login
+    },  
 
     syncCart,
 
