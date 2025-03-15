@@ -25,16 +25,13 @@ export default function Layout() {
 
   // Tính tổng số lượng sản phẩm trong giỏ hàng
   useEffect(() => {
-    console.log('Cart updated:', cart); // Debug cart mỗi khi thay đổi
     syncCart(); // Đảm bảo sync lại khi component mount
   }, [cart, syncCart]);
 
   const totalItems = cart.reduce((sum, item) => {
-    console.log('Cart item:', item); // Debug từng item
     return sum + (item.quantity || 0); // Đảm bảo quantity không phải undefined
   }, 0);
 
-  console.log('Total items:', totalItems); // Debug tổng số lượng
 
   const navigation = [
     { name: 'Trang chủ', href: '/' },

@@ -20,7 +20,6 @@ export const getToken = () => {
 apiClient.interceptors.request.use(
   (config) => {
     const token = getToken();
-    console.log('Token from cookie in interceptor:', token);
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     } else {

@@ -32,7 +32,6 @@ public class CartService {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof UserDetails) {
             String userIdStr = ((UserDetails) principal).getUsername();
-            System.out.println("User ID from token: " + userIdStr);
             UUID userId = UUID.fromString(userIdStr);
             return userService.getUserById(userId);
         } else {

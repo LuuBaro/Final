@@ -60,12 +60,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const syncCart = async () => {
-    const currentUser = user; // Lấy user từ state hiện tại
+    const currentUser = user;
     if (currentUser && currentUser.id) {
       try {
-        console.log('Syncing cart for user:', currentUser.id);
         const cartItems = await getCartItems();
-        console.log('Raw cart data from API:', cartItems); // Debug dữ liệu thô từ API
         // Chuẩn hóa dữ liệu từ API
         const normalizedCart = Array.isArray(cartItems)
           ? cartItems.map((item: any) => ({
@@ -75,7 +73,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }))
           : [];
         setCart(normalizedCart);
-        console.log('Normalized cart:', normalizedCart); // Debug cart sau khi chuẩn hóa
       } catch (error) {
         console.error('Lỗi khi đồng bộ giỏ hàng:', error.message);
         setCart([]);
@@ -90,7 +87,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const initialUser = initializeUser();
     setUser(initialUser);
     if (initialUser && initialUser.id) {
-      syncCart();
+      syncCart(); // Đồng bộ giỏ hàng khi khởi tạo user
     }
   }, []);
 
@@ -111,7 +108,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('UserData sau khi đăng nhập:', userData);
 
       setUser(userData);
-      syncCart();
+      syncCart(); // Đồng bộ giỏ hàng sau khi login
 
       if (userData.role === 'ADMIN' && navigate) {
         navigate('/admin/dashboard');
@@ -137,7 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const cartItem = { productId, quantity };
       const existingItem = cart.find(item => item.product.id === productId);
 
-      // Cập nhật state ngay lập tức để UI phản ánh
+      // Cập nhật state ngay lập tức để hiển thị số lượng trên UI
       if (existingItem) {
         const updatedCart = cart.map(item =>
           item.product.id === productId ? { ...item, quantity: item.quantity + quantity } : item
@@ -146,11 +143,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         setCart(prev => [...prev, { id: `temp-${Date.now()}-${Math.random()}`, product: { id: productId }, quantity }]);
       }
-      console.log('Cart after immediate update:', cart); // Debug ngay sau khi cập nhật
+      console.log('Cart after immediate update:', cart);
 
-      // Gọi API để thêm vào giỏ hàng
+      // Gọi API để thêm vào giỏ hàng, nhưng không syncCart ngay lập tức
       await addToCart(cartItem);
-      await syncCart(); // Đồng bộ lại để đảm bảo dữ liệu chính xác
+      // Không gọi syncCart ở đây để tránh fetch liên tục
+      // syncCart sẽ được gọi khi cần thiết (ví dụ: sau login hoặc logout)
     } catch (error) {
       console.error('Lỗi khi thêm vào giỏ hàng:', error.message);
       throw error;
@@ -162,7 +160,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await removeFromCart(cartId);
       const updatedCart = cart.filter(item => item.id !== cartId);
       setCart(updatedCart);
-      await syncCart();
+      // Không gọi syncCart ở đây để tránh fetch liên tục
     } catch (error) {
       console.error('Lỗi khi xóa sản phẩm:', error.message);
       throw error;
@@ -176,7 +174,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         item.id === cartId ? { ...item, quantity } : item
       );
       setCart(updatedCart);
-      await syncCart();
+      // Không gọi syncCart ở đây để tránh fetch liên tục
     } catch (error) {
       console.error('Lỗi khi cập nhật số lượng:', error.message);
       throw error;
@@ -186,7 +184,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const checkout = async () => {
     try {
       const order = await checkout();
-      await syncCart();
+      await syncCart(); // Đồng bộ giỏ hàng sau khi thanh toán
       return order;
     } catch (error) {
       console.error('Lỗi khi thanh toán:', error.message);
