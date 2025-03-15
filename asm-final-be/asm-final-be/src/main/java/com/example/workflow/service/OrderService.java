@@ -1,43 +1,47 @@
 package com.example.workflow.service;
 
+import com.example.workflow.dto.OrderItemDTO;
+import com.example.workflow.dto.OrderReportDTO;
 import com.example.workflow.model.*;
 import com.example.workflow.repository.*;
 import com.example.workflow.utils.Constants;
 import lombok.RequiredArgsConstructor;
+import net.sf.jasperreports.engine.*;
+import net.sf.jasperreports.engine.export.ooxml.JRXlsxExporter;
+import net.sf.jasperreports.export.SimpleExporterInput;
+import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class OrderService {
 
-    @Autowired
-    private OrderRepository orderRepository;
-
-    @Autowired
-    private OrderItemRepository orderItemRepository;
-
-    @Autowired
-    private CartRepository cartRepository;
-
-    @Autowired
-    private ProductRepository productRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
+    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final CartRepository cartRepository;
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
     private final RuntimeService runtimeService;
-
     private final TaskService taskService;
+    private final DataSource dataSource;
 
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -382,7 +386,7 @@ public class OrderService {
     }
 
     // Xác nhận thanh toán thành công
-    public ResponseEntity<?> completePaymentSuccess( String orderId) {
+    public ResponseEntity<?> completePaymentSuccess(String orderId) {
         try {
             UUID orderUUID;
             try {
@@ -392,11 +396,11 @@ public class OrderService {
             }
 
             Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
-            Order order = optionalOrder.get();
-
             if (optionalOrder.isEmpty()) {
                 return ResponseEntity.badRequest().body("❌ Order not found");
             }
+
+            Order order = optionalOrder.get();
 
             // Cập nhật trạng thái duyệt
             order.setStatus(Order.OrderStatus.APPROVED);
@@ -436,11 +440,11 @@ public class OrderService {
             }
 
             Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
-            Order order = optionalOrder.get();
-
             if (optionalOrder.isEmpty()) {
                 return ResponseEntity.badRequest().body("❌ Order not found");
             }
+
+            Order order = optionalOrder.get();
 
             // Cập nhật trạng thái duyệt
             order.setStatus(Order.OrderStatus.DELETED);
@@ -466,6 +470,101 @@ public class OrderService {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
+        }
+    }
+
+    // Lấy danh sách báo cáo đơn hàng
+    public List<OrderReportDTO> getOrderReport(LocalDate fromDate, LocalDate toDate, String status) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM camunda.get_order_report(?, ?, ?)")) {
+            // Thiết lập tham số
+            stmt.setObject(1, fromDate != null ? java.sql.Date.valueOf(fromDate) : null);
+            stmt.setObject(2, toDate != null ? java.sql.Date.valueOf(toDate) : null);
+            stmt.setString(3, status);
+
+            List<OrderReportDTO> orders = new ArrayList<>();
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    OrderReportDTO dto = new OrderReportDTO();
+                    dto.setId(UUID.fromString(rs.getString("order_id")));
+                    dto.setUserName(rs.getString("user_name"));
+                    dto.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                    dto.setStatus(rs.getString("status"));
+                    dto.setTotalAmount(rs.getBigDecimal("total_amount"));
+                    dto.setProducts(rs.getString("products"));
+
+                    // Lấy chi tiết đơn hàng
+                    List<OrderItemDTO> items = getOrderItems(conn, dto.getId());
+                    dto.setItems(items);
+
+                    orders.add(dto);
+                }
+            }
+            return orders;
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error: " + e.getMessage(), e);
+        }
+    }
+
+    // Lấy chi tiết đơn hàng
+    private List<OrderItemDTO> getOrderItems(Connection conn, UUID orderId) throws SQLException {
+        try (PreparedStatement itemStmt = conn.prepareStatement(
+                "SELECT oi.quantity, p.name, oi.price, oi.subtotal " +
+                        "FROM order_items oi JOIN products p ON oi.product_id = p.id " +
+                        "WHERE oi.order_id = ?")) {
+            itemStmt.setObject(1, orderId);
+            List<OrderItemDTO> items = new ArrayList<>();
+            try (ResultSet itemRs = itemStmt.executeQuery()) {
+                while (itemRs.next()) {
+                    OrderItemDTO item = new OrderItemDTO();
+                    item.setQuantity(itemRs.getInt("quantity"));
+                    item.setProductName(itemRs.getString("name"));
+                    item.setPrice(itemRs.getBigDecimal("price"));
+                    item.setSubtotal(itemRs.getBigDecimal("subtotal"));
+                    items.add(item);
+                }
+            }
+            return items;
+        }
+    }
+
+    // Xuất báo cáo
+    public byte[] exportReport(String format, LocalDate fromDate, LocalDate toDate, String status) throws JRException {
+        try (Connection conn = dataSource.getConnection()) {
+            // Load file JRXML
+            InputStream jrxmlInputStream = getClass().getResourceAsStream("/reports/order_report.jrxml");
+            if (jrxmlInputStream == null) {
+                throw new IllegalStateException("Report template 'order_report.jrxml' not found in resources/reports/");
+            }
+
+            // Log tham số
+            System.out.println("Export Parameters: FROM_DATE_PARAM=" + fromDate + ", TO_DATE_PARAM=" + toDate + ", STATUS_PARAM=" + status);
+
+            // Compile báo cáo
+            JasperReport jasperReport = JasperCompileManager.compileReport(jrxmlInputStream);
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("FROM_DATE_PARAM", fromDate != null ? fromDate.toString() : null);
+            parameters.put("TO_DATE_PARAM", toDate != null ? toDate.toString() : null);
+            parameters.put("STATUS_PARAM", status);
+
+            // Điền dữ liệu vào báo cáo
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, conn);
+
+            // Xuất báo cáo
+            if ("excel".equalsIgnoreCase(format)) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                JRXlsxExporter exporter = new JRXlsxExporter();
+                exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+                exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(baos));
+                exporter.exportReport();
+                return baos.toByteArray();
+            } else if ("pdf".equalsIgnoreCase(format)) {
+                return JasperExportManager.exportReportToPdf(jasperPrint);
+            } else {
+                throw new IllegalArgumentException("Unsupported report format: " + format);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error: " + e.getMessage(), e);
         }
     }
 }
