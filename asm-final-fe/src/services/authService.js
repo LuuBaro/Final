@@ -37,6 +37,28 @@ export const login = async (credentials) => {
   }
 };
 
+export const forgotPassword = async (data) => {
+  try {
+    const response = await apiClient.post('/forgot-password', null, {
+      params: { email: data.email },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Không thể gửi yêu cầu khôi phục mật khẩu!');
+  }
+};
+
+export const resetPassword = async (data) => {
+  try {
+    const response = await apiClient.post('/reset-password', null, {
+      params: { token: data.token, email: data.email, newPassword: data.newPassword },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Không thể đặt lại mật khẩu!');
+  }
+};
+
 // Hàm lấy token từ cookie
 export const getToken = () => {
   return Cookies.get('authToken');

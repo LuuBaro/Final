@@ -84,5 +84,30 @@ public class UserController {
     }
 
     // Quên mật khẩu
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestParam("email") String email) {
+        try {
+            userService.forgotPassword(email);
+            return ResponseEntity.ok("Liên kết khôi phục mật khẩu đã được gửi đến email của bạn.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi khi gửi email khôi phục: " + e.getMessage());
+        }
+    }
 
+    // Đặt lại mật khẩu
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestParam("token") String token, @RequestParam("email") String email, @RequestParam("newPassword") String newPassword) {
+        try {
+            userService.resetPassword(token, email, newPassword);
+            return ResponseEntity.ok("Đặt lại mật khẩu thành công.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi khi đặt lại mật khẩu: " + e.getMessage());
+        }
+    }
 }

@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +23,9 @@ public class UserService implements UserDetailsService { // Implements UserDetai
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EmailService emailService;
 
     // Đăng ký người dùng mới với role mặc định là USER
     @Transactional
@@ -132,5 +137,76 @@ public class UserService implements UserDetailsService { // Implements UserDetai
                 .password(user.getPassword())
                 .roles(user.getRole().name())
                 .build();
+    }
+
+    @Transactional
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với email: " + email));
+
+        // Tạo token: email + thời gian tạo + một giá trị ngẫu nhiên
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String rawToken = email + "|" + timestamp + "|" + UUID.randomUUID().toString();
+
+        // Mã hóa token bằng Base64 để dễ dàng giải mã
+        String token = Base64.getEncoder().encodeToString(rawToken.getBytes());
+
+        // Tạo liên kết khôi phục
+        String resetLink = "http://localhost:5173/reset-password?token=" + token + "&email=" + email;
+
+        // Log để kiểm tra
+        System.out.println("Generated Reset Link: " + resetLink);
+
+        // Gửi email
+        try {
+            emailService.sendResetPasswordEmail(user.getEmail(), resetLink);
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi gửi email khôi phục: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public void resetPassword(String token, String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với email: " + email));
+
+        // Giải mã token từ Base64
+        String decodedToken;
+        try {
+            decodedToken = new String(Base64.getDecoder().decode(token));
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+
+        // Tách các phần của token
+        String[] tokenParts = decodedToken.split("\\|");
+        if (tokenParts.length != 3) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+
+        String tokenEmail = tokenParts[0];
+        String timestamp = tokenParts[1];
+
+        // Kiểm tra email trong token có khớp không
+        if (!tokenEmail.equals(email)) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+
+        // Kiểm tra thời gian hết hạn
+        LocalDateTime tokenTime;
+        try {
+            tokenTime = LocalDateTime.parse(timestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (Exception e) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+
+        LocalDateTime expiryTime = tokenTime.plusHours(1); // Token hết hạn sau 1 giờ
+        if (LocalDateTime.now().isAfter(expiryTime)) {
+            throw new RuntimeException("Token đã hết hạn");
+        }
+
+        // Đặt lại mật khẩu
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 }

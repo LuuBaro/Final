@@ -2,10 +2,8 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Toaster, toast } from "react-hot-toast";
 import { Edit, Trash2, X } from "lucide-react";
-import axios from "axios";
 import LoadingSpinner from "../components/LoadingSpinner";
-
-const API_URL = "http://localhost:8080/api/categories";
+import { fetchCategories, addCategory, updateCategory, deleteCategory } from "../services/categoryService";
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
@@ -14,15 +12,15 @@ const CategoryManagement = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCategories();
+    fetchCategoriesData();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchCategoriesData = async () => {
     try {
-      const response = await axios.get(API_URL);
-      setCategories(response.data);
+      const data = await fetchCategories();
+      setCategories(data);
     } catch (error) {
-      toast.error("Lỗi khi tải danh sách loại sản phẩm!");
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -41,17 +39,17 @@ const CategoryManagement = () => {
 
     try {
       if (editCategory) {
-        const response = await axios.put(`${API_URL}/${editCategory.id}`, newCategory);
-        setCategories(categories.map((c) => (c.id === editCategory.id ? response.data : c)));
+        const updatedCategory = await updateCategory(editCategory.id, newCategory);
+        setCategories(categories.map((c) => (c.id === editCategory.id ? updatedCategory : c)));
         toast.success("Cập nhật thành công!");
       } else {
-        const response = await axios.post(API_URL, newCategory);
-        setCategories([...categories, response.data]);
+        const addedCategory = await addCategory(newCategory);
+        setCategories([...categories, addedCategory]);
         toast.success("Thêm loại sản phẩm thành công!");
       }
       resetForm();
     } catch (error) {
-      toast.error("Lỗi khi xử lý yêu cầu!");
+      toast.error(error.message);
     }
   };
 
@@ -70,11 +68,11 @@ const CategoryManagement = () => {
               onClick={async () => {
                 toast.dismiss(t.id);
                 try {
-                  await axios.delete(`${API_URL}/${id}`);
+                  await deleteCategory(id);
                   setCategories(categories.filter((c) => c.id !== id));
                   toast.success("Đã xóa loại sản phẩm!");
                 } catch (error) {
-                  toast.error("Lỗi khi xóa loại sản phẩm!");
+                  toast.error(error.message);
                 }
               }}
               className="bg-red-500 text-white px-4 py-2 rounded-lg"
@@ -93,7 +91,6 @@ const CategoryManagement = () => {
       { duration: 5000 }
     );
   };
-  
 
   const resetForm = () => {
     setNewCategory({ name: "", description: "" });
@@ -133,7 +130,7 @@ const CategoryManagement = () => {
             onClick={resetForm}
             className="bg-gray-500 text-white px-4 py-2 rounded-lg flex items-center"
           >
-            <span className="w-10 h-5 flex items-center justify-center" > Hủy </span>
+            <span className="w-10 h-5 flex items-center justify-center">Hủy</span>
           </button>
         )}
       </form>

@@ -8,10 +8,23 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: baolgpc08011@fpt.edu.vn
+    password: u b n o i v o q l g k b a e j e
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 camunda.bpm:
   database:
     schema-update: true
     type: postgres
   admin-user:
     id: admin
-    password: 123 
+    password: 123
+

@@ -28,6 +28,8 @@ import CategoryManagement from './pages/CategoryManagement';
 import OrderManagement from './pages/OrderManagement';
 import ReportAnalytics from './pages/ReportAnalytics';
 import UserManagement from './pages/UserManagement';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -48,6 +50,8 @@ function App() {
           <Route path="demo" element={<Demo />} />
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 

@@ -311,7 +311,7 @@ const ReportAnalytics = () => {
           <div className="bg-gray-50 p-4 rounded-lg shadow h-64">
             <Pie data={pieStatusData} options={pieStatusOptions} />
           </div>
-          <div className="bg-gray-50 p-4 rounded-lg shadow h-64 overflow-hidden"> {/* Ẩn thanh cuộn */}
+          <div className="bg-gray-50 p-4 rounded-lg shadow h-64">
             <Pie data={pieProductData} options={pieProductOptions} />
           </div>
         </div>
