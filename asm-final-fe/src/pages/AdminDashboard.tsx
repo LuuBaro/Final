@@ -2,28 +2,52 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartData, ChartOptions } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { Bell, MessageCircle, Settings, Moon, Sun, User, LogOut, NotebookPen } from "lucide-react";
+import { Bell, MessageCircle, Settings, Moon, Sun, User, LogOut, NotebookPen } from 'lucide-react';
+
 // Đăng ký các thành phần của Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const AdminDashboard = () => {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', category: '' });
-  const [newCategory, setNewCategory] = useState('');
-  const [editProduct, setEditProduct] = useState(null);
-  const [editCategory, setEditCategory] = useState(null);
+// Định nghĩa kiểu dữ liệu
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  image: string;
+}
+
+interface Order {
+  id: number;
+  name: string;
+  date: string;
+  status: 'Trả' | 'Chưa thanh toán' | 'Chưa giải quyết';
+  total: number;
+}
+
+interface NewProduct {
+  name: string;
+  price: string; // Dùng string vì input type="number" trả về string
+  category: string;
+}
+
+const AdminDashboard: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [newProduct, setNewProduct] = useState<NewProduct>({ name: '', price: '', category: '' });
+  const [newCategory, setNewCategory] = useState<string>('');
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editCategory, setEditCategory] = useState<string | null>(null);
   const location = useLocation();
-  const [darkMode, setDarkMode] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showMessages, setShowMessages] = useState(false);
+  const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
+  const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  const [showMessages, setShowMessages] = useState<boolean>(false);
+
   // Dữ liệu giả lập
   useEffect(() => {
-    // Giả lập dữ liệu từ API
     setProducts([
       { id: 1, name: 'Máy tính xách tay HP Probook 450', price: 499, category: 'Bán điện tử', image: 'https://via.placeholder.com/50' },
       { id: 2, name: 'Điện thoại Samsung', price: 299, category: 'Bán điện tử', image: 'https://via.placeholder.com/50' },
@@ -38,29 +62,34 @@ const AdminDashboard = () => {
   }, []);
 
   // Thêm sản phẩm
-  const handleAddProduct = (e) => {
+  const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    setProducts([...products, { id: Date.now(), ...newProduct, price: parseFloat(newProduct.price) }]);
+    setProducts([...products, {
+      id: Date.now(), ...newProduct, price: parseFloat(newProduct.price),
+      image: ''
+    }]);
     setNewProduct({ name: '', price: '', category: '' });
     toast.success('Sản phẩm đã được thêm!');
   };
 
   // Sửa sản phẩm
-  const handleEditProduct = (product) => {
+  const handleEditProduct = (product: Product) => {
     setEditProduct(product);
-    setNewProduct({ name: product.name, price: product.price, category: product.category });
+    setNewProduct({ name: product.name, price: product.price.toString(), category: product.category });
   };
 
-  const handleUpdateProduct = (e) => {
+  const handleUpdateProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    setProducts(products.map(p => p.id === editProduct.id ? { ...editProduct, ...newProduct, price: parseFloat(newProduct.price) } : p));
+    if (editProduct) {
+      setProducts(products.map(p => p.id === editProduct.id ? { ...editProduct, ...newProduct, price: parseFloat(newProduct.price) } : p));
+    }
     setEditProduct(null);
     setNewProduct({ name: '', price: '', category: '' });
     toast.success('Sản phẩm đã được cập nhật!');
   };
 
   // Xóa sản phẩm
-  const handleDeleteProduct = (id) => {
+  const handleDeleteProduct = (id: number) => {
     if (window.confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
       setProducts(products.filter(p => p.id !== id));
       toast.success('Sản phẩm đã bị xóa!');
@@ -68,7 +97,7 @@ const AdminDashboard = () => {
   };
 
   // Thêm loại sản phẩm
-  const handleAddCategory = (e) => {
+  const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!categories.includes(newCategory)) {
       setCategories([...categories, newCategory]);
@@ -78,21 +107,23 @@ const AdminDashboard = () => {
   };
 
   // Sửa loại sản phẩm
-  const handleEditCategory = (category) => {
+  const handleEditCategory = (category: string) => {
     setEditCategory(category);
     setNewCategory(category);
   };
 
-  const handleUpdateCategory = (e) => {
+  const handleUpdateCategory = (e: React.FormEvent) => {
     e.preventDefault();
-    setCategories(categories.map(c => c === editCategory ? newCategory : c));
+    if (editCategory && newCategory) {
+      setCategories(categories.map(c => c === editCategory ? newCategory : c));
+    }
     setEditCategory(null);
     setNewCategory('');
     toast.success('Loại sản phẩm đã được cập nhật!');
   };
 
   // Xóa loại sản phẩm
-  const handleDeleteCategory = (category) => {
+  const handleDeleteCategory = (category: string) => {
     if (window.confirm('Bạn có chắc muốn xóa loại sản phẩm này?')) {
       setCategories(categories.filter(c => c !== category));
       setProducts(products.filter(p => p.category !== category));
@@ -101,12 +132,12 @@ const AdminDashboard = () => {
   };
 
   // Dữ liệu biểu đồ
-  const chartData = {
-    labels: orders.map(o => o.name),
+  const chartData: ChartData<'bar', number[], string> = {
+    labels: orders.map((o: Order) => o.name),
     datasets: [
       {
         label: 'Tổng tiền ($)',
-        data: orders.map(o => o.total),
+        data: orders.map((o: Order) => o.total),
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 1,
@@ -114,11 +145,16 @@ const AdminDashboard = () => {
     ],
   };
 
-  const chartOptions = {
+  const chartOptions: ChartOptions<'bar'> = {
     responsive: true,
     plugins: {
-      legend: { position: 'top' },
-      title: { display: true, text: 'Thống kê đơn hàng' },
+      legend: {
+        position: 'top' as const, // Ép kiểu để TypeScript nhận diện đúng giá trị literal
+      },
+      title: {
+        display: true,
+        text: 'Thống kê đơn hàng',
+      },
     },
   };
 
@@ -170,102 +206,102 @@ const AdminDashboard = () => {
       <div className="flex-1 p-6">
         {/* Header */}
         <motion.div
-      initial={{ y: -50 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="flex justify-between items-center bg-white p-4 rounded-lg shadow-lg"
-    >
-      {/* Thanh tìm kiếm */}
-      <div className="flex items-center space-x-2 w-1/3">
-        <span className="text-gray-400">🔍</span>
-        <input
-          type="text"
-          placeholder="Nhập để tìm kiếm..."
-          className="w-full p-2 outline-none bg-transparent text-gray-600"
-        />
-      </div>
-
-      {/* Cài đặt & thông báo */}
-      <div className="flex items-center space-x-4">
-        {/* Toggle Light/Dark Mode */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200"
+          initial={{ y: -50 }}
+          animate={{ y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex justify-between items-center bg-white p-4 rounded-lg shadow-lg"
         >
-          {darkMode ? <Sun className="w-5 h-5 text-gray-500" /> : <Moon className="w-5 h-5 text-gray-500" />}
-        </button>
-
-        {/* Thông báo */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 relative"
-          >
-            <Bell className="w-5 h-5 text-gray-500" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg p-3">
-              <p className="text-gray-700 text-sm">Bạn có 3 thông báo mới</p>
-            </div>
-          )}
-        </div>
-
-        {/* Tin nhắn */}
-        <div className="relative">
-          <button
-            onClick={() => setShowMessages(!showMessages)}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 relative"
-          >
-            <MessageCircle className="w-5 h-5 text-gray-500" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-          {showMessages && (
-            <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg p-3">
-              <p className="text-gray-700 text-sm">Bạn có 5 tin nhắn mới</p>
-            </div>
-          )}
-        </div>
-
-        {/* Avatar & Thông tin người dùng */}
-        <div className="relative">
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-2"
-          >
-            <img
-              src="https://via.placeholder.com/40"
-              alt="Avatar"
-              className="w-10 h-10 rounded-full"
+          {/* Thanh tìm kiếm */}
+          <div className="flex items-center space-x-2 w-1/3">
+            <span className="text-gray-400">🔍</span>
+            <input
+              type="text"
+              placeholder="Nhập để tìm kiếm..."
+              className="w-full p-2 outline-none bg-transparent text-gray-600"
             />
-            <div className="text-sm">
-              <p className="font-medium text-gray-700">Thomas Anree</p>
-              <p className="text-gray-400 text-xs">Nhà thiết kế UX</p>
+          </div>
+
+          {/* Cài đặt & thông báo */}
+          <div className="flex items-center space-x-4">
+            {/* Toggle Light/Dark Mode */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200"
+            >
+              {darkMode ? <Sun className="w-5 h-5 text-gray-500" /> : <Moon className="w-5 h-5 text-gray-500" />}
+            </button>
+
+            {/* Thông báo */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 relative"
+              >
+                <Bell className="w-5 h-5 text-gray-500" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg p-3">
+                  <p className="text-gray-700 text-sm">Bạn có 3 thông báo mới</p>
+                </div>
+              )}
             </div>
-          </button>
-          {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg">
-              <button className="flex items-center w-full p-2 hover:bg-gray-100">
-                <User className="w-5 h-5 text-gray-500 mr-2" />
-                Hồ sơ của tôi
+
+            {/* Tin nhắn */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMessages(!showMessages)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 relative"
+              >
+                <MessageCircle className="w-5 h-5 text-gray-500" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               </button>
-              <button className="flex items-center w-full p-2 hover:bg-gray-100">
-                <NotebookPen className="w-5 h-5 text-gray-500 mr-2" />
-                Liên hệ của tôi
-              </button>
-              <button className="flex items-center w-full p-2 hover:bg-gray-100">
-                <Settings className="w-5 h-5 text-gray-500 mr-2" />
-                Cài đặt tài khoản
-              </button>
-              <button className="flex items-center w-full p-2 hover:bg-gray-100">
-                <LogOut className="w-5 h-5 text-red-500 mr-2" />
-                Đăng xuất
-              </button>
+              {showMessages && (
+                <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg p-3">
+                  <p className="text-gray-700 text-sm">Bạn có 5 tin nhắn mới</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
-    </motion.div>
+
+            {/* Avatar & Thông tin người dùng */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center space-x-2"
+              >
+                <img
+                  src="https://via.placeholder.com/40"
+                  alt="Avatar"
+                  className="w-10 h-10 rounded-full"
+                />
+                <div className="text-sm">
+                  <p className="font-medium text-gray-700">Thomas Anree</p>
+                  <p className="text-gray-400 text-xs">Nhà thiết kế UX</p>
+                </div>
+              </button>
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg">
+                  <button className="flex items-center w-full p-2 hover:bg-gray-100">
+                    <User className="w-5 h-5 text-gray-500 mr-2" />
+                    Hồ sơ của tôi
+                  </button>
+                  <button className="flex items-center w-full p-2 hover:bg-gray-100">
+                    <NotebookPen className="w-5 h-5 text-gray-500 mr-2" />
+                    Liên hệ của tôi
+                  </button>
+                  <button className="flex items-center w-full p-2 hover:bg-gray-100">
+                    <Settings className="w-5 h-5 text-gray-500 mr-2" />
+                    Cài đặt tài khoản
+                  </button>
+                  <button className="flex items-center w-full p-2 hover:bg-gray-100">
+                    <LogOut className="w-5 h-5 text-red-500 mr-2" />
+                    Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
 
         {/* Content */}
         <Routes>
@@ -303,7 +339,7 @@ const AdminDashboard = () => {
                     required
                   >
                     <option value="">Chọn loại</option>
-                    {categories.map((cat) => (
+                    {categories.map((cat: string) => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
@@ -333,7 +369,7 @@ const AdminDashboard = () => {
                       className="p-2 border rounded mr-2"
                       required
                     >
-                      {categories.map((cat) => (
+                      {categories.map((cat: string) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
@@ -359,7 +395,7 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((product) => (
+                    {products.map((product: Product) => (
                       <tr key={product.id} className="border-b">
                         <td className="p-2">{product.name}</td>
                         <td className="p-2">${product.price}</td>
@@ -430,7 +466,7 @@ const AdminDashboard = () => {
                   </form>
                 )}
                 <ul>
-                  {categories.map((category) => (
+                  {categories.map((category: string) => (
                     <li key={category} className="flex justify-between items-center p-2 border-b">
                       <span>{category}</span>
                       <div>
@@ -488,7 +524,7 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map((order) => (
+                    {orders.map((order: Order) => (
                       <tr key={order.id} className="border-b">
                         <td className="p-2">{order.name}</td>
                         <td className="p-2">{order.date}</td>

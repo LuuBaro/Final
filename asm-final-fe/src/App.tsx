@@ -30,10 +30,12 @@ import ReportAnalytics from './pages/ReportAnalytics';
 import UserManagement from './pages/UserManagement';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
     <BrowserRouter>
+    <AuthProvider>
       <Toaster position="top-center" />
       <Routes>
         {/* Các route có Layout */}
@@ -58,6 +60,7 @@ function App() {
         {/* Admin routes với kiểm tra trực tiếp trong AdminLayout */}
         <Route path="/admin/*" element={<AdminLayout />} />
       </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
