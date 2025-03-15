@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -83,6 +84,27 @@ public class UserService implements UserDetailsService { // Implements UserDetai
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
+
+    // Quên mật khẩu
+//    @Transactional
+//    public void forgotPassword(String email) {
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với email: " + email));
+//
+//        // Tạo token dựa trên email, thời gian, và một salt ngẫu nhiên
+//        String rawToken = email + "|" + LocalDateTime.now().toString() + "|" + UUID.randomUUID().toString();
+//        String token = passwordEncoder.encode(rawToken); // Mã hóa token để tăng độ an toàn
+//
+//        // Tạo liên kết khôi phục
+//        String resetLink = "http://localhost:5173/reset-password?token=" + token + "&email=" + email;
+//
+//        // Gửi email
+//        try {
+//            emailService.sendResetPasswordEmail(user.getEmail(), resetLink);
+//        } catch (Exception e) {
+//            throw new RuntimeException("Lỗi khi gửi email khôi phục: " + e.getMessage());
+//        }
+//    }
 
     // Lấy thông tin người dùng theo ID
     public User getUserById(UUID userId) {

@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -81,6 +82,7 @@ public class OrderController {
     }
 
     @GetMapping("/report")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<List<OrderReportDTO>> getOrderReport(
             @RequestParam(name = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(name = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
@@ -97,6 +99,7 @@ public class OrderController {
     }
 
     @GetMapping("/export/{format}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> exportReport(
             @PathVariable("format") String format,
             @RequestParam(name = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,

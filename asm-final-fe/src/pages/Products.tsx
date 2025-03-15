@@ -1,9 +1,12 @@
-// src/pages/Products.js
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaStar, FaSearch } from 'react-icons/fa';
+import { ShoppingCart } from 'lucide-react';
 import { getProducts } from '../services/productService';
+import { addToCart } from '../services/cartService';
+import { useStore } from '../store/useStore';
+import toast from 'react-hot-toast';
 
 export default function Products() {
   const [products, setProducts] = useState([]);
@@ -18,6 +21,10 @@ export default function Products() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isBrandsOpen, setIsBrandsOpen] = useState(true); // State cho collapsible brands
   const itemsPerPage = 6; // Số sản phẩm mỗi trang
+
+  // State và hook từ store để kiểm tra đăng nhập
+  const { user } = useStore();
+  const navigate = useNavigate();
 
   // Lấy danh sách sản phẩm từ API
   useEffect(() => {
@@ -78,6 +85,27 @@ export default function Products() {
     setSelectedBrands((prev) =>
       prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]
     );
+  };
+
+  // Hàm xử lý thêm vào giỏ hàng
+  const handleAddToCart = async (productId) => {
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const cartItem = {
+        productId: productId,
+        quantity: 1,
+      };
+      await addToCart(cartItem);
+      toast.success('Thêm vào giỏ hàng thành công!');
+    } catch (error) {
+      console.error('Error adding to cart:', error.response?.data || error.message);
+      toast.error(`Lỗi khi thêm vào giỏ hàng: ${error.response?.data?.message || 'Vui lòng thử lại!'}`);
+    }
   };
 
   // Xử lý loading và error
@@ -246,12 +274,12 @@ export default function Products() {
                   {visibleProducts.map((product) => (
                     <motion.div
                       key={product.id}
-                      className="bg-white rounded-lg shadow-md overflow-hidden"
+                      className="bg-white rounded-lg shadow-md overflow-hidden relative group"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5 }}
                     >
-                      <Link to={`/products/${product.id}`}>
+                      <div className="relative">
                         <img
                           src={
                             product.imageUrl || 'https://via.placeholder.com/600x600?text=No+Image'
@@ -260,28 +288,37 @@ export default function Products() {
                           className="w-full h-64 object-cover"
                           loading="lazy"
                         />
-                        <div className="p-4">
-                          <h3 className="text-lg font-medium line-clamp-2 text-gray-800">
-                            {product.name}
-                          </h3>
-                          <div className="flex items-center mt-2">
-                            {[...Array(5)].map((_, i) => (
-                              <FaStar
-                                key={i}
-                                className={
-                                  i < 4.5 ? 'text-yellow-400' : 'text-gray-300'
-                                }
-                              />
-                            ))}
-                            <span className="ml-2 text-sm text-gray-600">
-                              (4.5 - {product.stock || 0} đánh giá)
-                            </span>
+                        <button
+                          onClick={() => handleAddToCart(product.id)}
+                          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        >
+                          <div className="flex items-center px-4 py-2 bg-white text-black rounded-full hover:bg-gray-200 transition-all duration-300">
+                            <ShoppingCart className="h-5 w-5 mr-2" />
+                            <span className="font-semibold">Thêm vào giỏ</span>
                           </div>
-                          <p className="mt-2 text-gray-900 font-semibold">
-                            {product.price.toLocaleString('vi-VN')} đ
-                          </p>
+                        </button>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="text-lg font-medium line-clamp-2 text-gray-800">
+                          {product.name}
+                        </h3>
+                        <div className="flex items-center mt-2">
+                          {[...Array(5)].map((_, i) => (
+                            <FaStar
+                              key={i}
+                              className={
+                                i < 4.5 ? 'text-yellow-400' : 'text-gray-300'
+                              }
+                            />
+                          ))}
+                          <span className="ml-2 text-sm text-gray-600">
+                            (4.5 - {product.stock || 0} đánh giá)
+                          </span>
                         </div>
-                      </Link>
+                        <p className="mt-2 text-gray-900 font-semibold">
+                          {product.price.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
                     </motion.div>
                   ))}
                 </div>

@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không dùng session
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép truy cập không cần auth
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/**", "/**").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/**").permitAll()
                         // Các endpoint khác yêu cầu xác thực
                         .anyRequest().authenticated()
                 )
