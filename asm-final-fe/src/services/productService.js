@@ -60,3 +60,13 @@ export const deleteProduct = async (id) => {
     throw new Error(error.response?.data || 'Không thể xóa sản phẩm!');
   }
 };
+
+// Hàm import sản phẩm từ JSON
+export const importProductsFromJson = async (products) => {
+  try {
+    const response = await apiClient.post('/products/import/json', products);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data || 'Không thể import sản phẩm!');
+  }
+};

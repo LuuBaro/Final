@@ -104,7 +104,7 @@ public class ProductController {
 
     // API import sản phẩm từ file Excel với JasperReports (chỉ ADMIN)
     @PostMapping("/products/import")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> importProductsFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             // Kiểm tra file

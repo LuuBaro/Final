@@ -1,8 +1,7 @@
-// src/components/ProductManagement.js
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
-import { Edit, Trash2, PlusCircle, Search } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Search, FileSpreadsheet } from 'lucide-react'; // Thêm icon FileSpreadsheet
 import LoadingSpinner from '../components/LoadingSpinner';
 import {
   storage,
@@ -10,7 +9,8 @@ import {
   uploadBytesResumable,
   getDownloadURL,
 } from '../firebaseConfig';
-import { getProducts, getCategories, addProduct, updateProduct, deleteProduct } from '../services/productService';
+import { getProducts, getCategories, addProduct, updateProduct, deleteProduct, importProductsFromJson } from '../services/productService';
+import * as XLSX from 'xlsx';
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
@@ -31,7 +31,11 @@ const ProductManagement = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const productsPerPage = 5;
 
-  // Lấy danh sách sản phẩm và loại sản phẩm khi component được mount
+  // State cho import Excel
+  const [excelData, setExcelData] = useState([]);
+  const [editedData, setEditedData] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -50,7 +54,6 @@ const ProductManagement = () => {
     fetchData();
   }, []);
 
-  // Xử lý thay đổi file
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -61,7 +64,6 @@ const ProductManagement = () => {
     }
   };
 
-  // Upload hình ảnh lên Firebase và lấy URL
   const uploadImageToFirebase = async (file) => {
     const storageRef = ref(storage, `images/${file.name}_${Date.now()}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
@@ -86,7 +88,6 @@ const ProductManagement = () => {
     });
   };
 
-  // Thêm sản phẩm mới
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
@@ -116,10 +117,9 @@ const ProductManagement = () => {
         category: selectedCategory || { id: newProduct.categoryId, name: 'N/A' },
       };
 
-      // Thêm sản phẩm mới vào đầu danh sách và đặt lại trang về 1
       setProducts([newProductWithCategory, ...products]);
       setNewProduct({ name: '', price: '', stock: '', categoryId: '', imageUrl: '', imageFile: null });
-      setCurrentPage(1); // Đặt lại trang về 1 để hiển thị sản phẩm mới ở đầu
+      setCurrentPage(1);
       toast.success('Sản phẩm đã được thêm!');
     } catch (error) {
       console.error('Lỗi khi thêm sản phẩm:', error.message);
@@ -129,7 +129,6 @@ const ProductManagement = () => {
     }
   };
 
-  // Sửa sản phẩm
   const handleEditProduct = (product) => {
     setEditProduct(product);
     setNewProduct({
@@ -183,7 +182,6 @@ const ProductManagement = () => {
     }
   };
 
-  // Xóa sản phẩm
   const handleDeleteProduct = async (id) => {
     toast.promise(
       new Promise(async (resolve, reject) => {
@@ -217,34 +215,30 @@ const ProductManagement = () => {
             { duration: 5000 }
           );
         });
-  
+
         if (confirmDelete) {
           try {
             setIsProcessing(true);
             await deleteProduct(id);
             setProducts(products.filter((p) => p.id !== id));
-            resolve("Sản phẩm đã bị xóa!");
+            resolve('Sản phẩm đã bị xóa!');
           } catch (error) {
-            console.error("Lỗi khi xóa sản phẩm:", error.message);
-            reject(error.message || "Lỗi khi xóa sản phẩm!");
+            console.error('Lỗi khi xóa sản phẩm:', error.message);
+            reject(error.message || 'Lỗi khi xóa sản phẩm!');
           } finally {
             setIsProcessing(false);
           }
         } else {
-          reject("Hủy xóa sản phẩm!");
+          reject('Hủy xóa sản phẩm!');
         }
-      }),
-      
+      })
     );
   };
-  
 
-  // Tìm kiếm sản phẩm
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Sắp xếp sản phẩm
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     if (sortConfig.key === 'name') {
       return sortConfig.direction === 'asc'
@@ -264,19 +258,89 @@ const ProductManagement = () => {
     return 0;
   });
 
-  // Phân trang
   const totalPages = Math.ceil(sortedProducts.length / productsPerPage);
   const paginatedProducts = sortedProducts.slice(
     (currentPage - 1) * productsPerPage,
     currentPage * productsPerPage
   );
 
-  // Xử lý sắp xếp
   const handleSort = (key) => {
     setSortConfig({
       key,
       direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc',
     });
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      const headers = jsonData[0];
+      const rows = jsonData.slice(1).filter(row => row.length > 0);
+      const dataArray = rows.map(row => {
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header] = row[index] || '';
+        });
+        return obj;
+      });
+
+      setExcelData(dataArray);
+      setEditedData(dataArray);
+      setIsEditing(true);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleEditChange = (index, field, value) => {
+    const newData = [...editedData];
+    newData[index][field] = value;
+    setEditedData(newData);
+  };
+
+  const handleImport = async () => {
+    try {
+      setIsProcessing(true);
+      const importData = editedData.map(product => ({
+        name: product.name,
+        price: parseFloat(product.price),
+        stock: parseInt(product.stock),
+        category: { id: product.category_id || '' },
+        imageUrl: product.imageUrl || '',
+      }));
+
+      const response = await importProductsFromJson(importData);
+
+      const newProducts = response.map(p => ({
+        ...p,
+        category: categories.find(cat => cat.id === p.category.id) || { id: p.category.id, name: 'N/A' },
+      }));
+      setProducts([...newProducts, ...products]);
+      setIsEditing(false);
+      setExcelData([]);
+      setEditedData([]);
+      toast.success('Import sản phẩm thành công!');
+    } catch (error) {
+      console.error('Lỗi khi import:', error.message);
+      toast.error(error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDownload = () => {
+    const worksheet = XLSX.utils.json_to_sheet(editedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+    XLSX.writeFile(workbook, 'edited_products.xlsx');
   };
 
   if (isFetching) return <LoadingSpinner />;
@@ -289,6 +353,103 @@ const ProductManagement = () => {
       className="bg-white p-6 rounded-lg shadow-lg max-w-7xl mx-auto"
     >
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản lý sản phẩm</h2>
+
+      {/* Nút Import Excel */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Import từ Excel</h3>
+        <div className="flex items-center space-x-2">
+          <label className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-300 transition-colors cursor-pointer">
+            <FileSpreadsheet className="w-5 h-5" />
+            <span>Chọn tệp</span>
+            <input
+              type="file"
+              accept=".xlsx"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+          {excelData.length > 0 && (
+            <p className="text-gray-600">Đã chọn: {excelData.length} sản phẩm</p>
+          )}
+        </div>
+        {isEditing && (
+          <div className="mt-4">
+            <h4 className="text-md font-medium text-gray-700 mb-2">Danh sách sản phẩm (Chỉnh sửa)</h4>
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 p-2">Name</th>
+                  <th className="border border-gray-300 p-2">Category ID</th>
+                  <th className="border border-gray-300 p-2">Price</th>
+                  <th className="border border-gray-300 p-2">Stock</th>
+                  <th className="border border-gray-300 p-2">Image URL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {editedData.map((row, index) => (
+                  <tr key={index}>
+                    <td className="border border-gray-300 p-2">
+                      <input
+                        type="text"
+                        value={row.name || ''}
+                        onChange={(e) => handleEditChange(index, 'name', e.target.value)}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                    <td className="border border-gray-300 p-2">
+                      <input
+                        type="text"
+                        value={row.category_id || ''}
+                        onChange={(e) => handleEditChange(index, 'category_id', e.target.value)}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                    <td className="border border-gray-300 p-2">
+                      <input
+                        type="number"
+                        value={row.price || ''}
+                        onChange={(e) => handleEditChange(index, 'price', e.target.value)}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                    <td className="border border-gray-300 p-2">
+                      <input
+                        type="number"
+                        value={row.stock || ''}
+                        onChange={(e) => handleEditChange(index, 'stock', e.target.value)}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                    <td className="border border-gray-300 p-2">
+                      <input
+                        type="text"
+                        value={row.imageUrl || ''}
+                        onChange={(e) => handleEditChange(index, 'imageUrl', e.target.value)}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="mt-4 flex space-x-4">
+              <button
+                onClick={handleImport}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                disabled={isProcessing}
+              >
+                Import
+              </button>
+              <button
+                onClick={handleDownload}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Tải xuống file đã chỉnh sửa
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <form
         onSubmit={editProduct ? handleUpdateProduct : handleAddProduct}
