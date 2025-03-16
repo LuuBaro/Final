@@ -2,16 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, User, Menu, X } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useStore } from '../store/useStore';
 
 export default function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { cart, user, logout, syncCart } = useAuth(); // Thêm syncCart để debug
+  const { cart, user, logout, syncCart } = useStore(); // Thay fetchCart bằng syncCart
   const location = useLocation();
-  const [userName, setUserName] = useState<string>('');
+  const [userName, setUserName] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
   const handleMouseEnter = () => setIsDropdownOpen(true);
+  // Đồng bộ giỏ hàng khi component mount và khi user thay đổi
+  useEffect(() => {
+    if (user && user.id) {
+      syncCart();
+    }
+  }, [user, syncCart]);
 
   // Cập nhật userName khi user thay đổi
   useEffect(() => {
@@ -20,18 +25,10 @@ export default function Layout() {
     } else {
       setUserName('');
     }
-    console.log('User changed:', user); // Debug user
+   
   }, [user]);
 
-  // Tính tổng số lượng sản phẩm trong giỏ hàng
-  useEffect(() => {
-    syncCart(); // Đảm bảo sync lại khi component mount
-  }, [cart, syncCart]);
-
-  const totalItems = cart.reduce((sum, item) => {
-    return sum + (item.quantity || 0); // Đảm bảo quantity không phải undefined
-  }, 0);
-
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const navigation = [
     { name: 'Trang chủ', href: '/' },
@@ -39,22 +36,20 @@ export default function Layout() {
     { name: 'Về chúng tôi', href: '/about' },
     { name: 'Liên hệ', href: '/contact' },
   ];
-
   const toggleDropdown = () => {
     setIsDropdownOpen((prev) => !prev);
   };
-
+  
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!event.target || !((event.target as HTMLElement).closest('.user-dropdown'))) {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".user-dropdown")) {
         setIsDropdownOpen(false);
       }
     };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
-
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-white shadow-sm fixed w-full z-50">
@@ -62,7 +57,7 @@ export default function Layout() {
           <div className="flex items-center justify-between h-full">
             <div className="flex items-center">
               <Link to="/" className="text-2xl font-bold text-gray-900">
-                Baro Fashion
+              Baro Fashion
               </Link>
             </div>
 
@@ -89,49 +84,50 @@ export default function Layout() {
               </Link>
 
               {user ? (
-                <div className="relative">
-                  <button
-                    onClick={toggleDropdown}
-                    onMouseEnter={handleMouseEnter}
-                    className="flex items-center space-x-2 user-dropdown focus-hover:opacity-100"
-                  >
-                    <User className="h-6 w-6 text-gray-600" />
-                    <span className="text-sm text-gray-600">{userName}</span>
-                  </button>
-                  {isDropdownOpen && (
-                    <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-xl z-10 user-dropdown">
-                      <Link
-                        to="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Tài khoản
-                      </Link>
-                      <Link
-                        to="/orders"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Đơn hàng
-                      </Link>
-                      {user.role === 'ADMIN' && (
-                        <Link
-                          to="/admin"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Admin
-                        </Link>
-                      )}
-                      <button
-                        onClick={() => {
-                          logout();
-                          setUserName('');
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Đăng xuất
-                      </button>
-                    </div>
-                  )}
-                </div>
+             <div className="relative">
+             <button
+               onClick={toggleDropdown}
+               onMouseEnter={handleMouseEnter}
+               className="flex items-center space-x-2 user-dropdown focus-hover:opacity-100"
+             >
+               <User className="h-6 w-6 text-gray-600" />
+               <span className="text-sm text-gray-600">{userName}</span>
+             </button>
+             {isDropdownOpen && (
+               <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-xl z-10 user-dropdown">
+                 <Link
+                   to="/profile"
+                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                 >
+                   Tài khoản
+                 </Link>
+                 <Link
+                   to="/orders"
+                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                 >
+                   Đơn hàng
+                 </Link>
+                 {user.roles === "ADMIN" && (
+                   <Link
+                     to="/admin"
+                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                   >
+                     Admin
+                   </Link>
+                 )}
+                 <button
+                   onClick={() => {
+                     logout();
+                     
+                     setUserName("");
+                   }}
+                   className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                 >
+                   Đăng xuất
+                 </button>
+               </div>
+             )}
+           </div>
               ) : (
                 <Link
                   to="/login"
@@ -193,6 +189,7 @@ export default function Layout() {
           </motion.div>
         </AnimatePresence>
       </main>
+
     </div>
   );
 }

@@ -15,7 +15,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -27,22 +31,38 @@ public class SecurityConfig {
     public SecurityConfig(@Lazy UserService userService, JwtAuthFilter jwtAuthFilter) {
         this.userService = userService;
         this.jwtAuthFilter = jwtAuthFilter;
-        this.jwtAuthFilter.setUserService(userService); // Gán UserService cho JwtAuthFilter
+        this.jwtAuthFilter.setUserService(userService);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable()) // Tắt CSRF vì dùng JWT
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Thêm CORS configuration
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không dùng session
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép truy cập không cần auth
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/**").permitAll()
+                        .requestMatchers("/camunda/**", "/engine-rest/**").permitAll()
+                        .requestMatchers("/api/login", "/api/register", "/api/forgot-password", "/api/reset-password").permitAll()
+                        .requestMatchers("/api/products", "/api/products/**", "/api/categories", "/api/categories/**").permitAll()
                         // Các endpoint khác yêu cầu xác thực
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class) // Thêm JwtAuthFilter
                 .build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // Origin của frontend
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Bao gồm OPTIONS cho preflight
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true); // Cho phép gửi cookie/credentials
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean

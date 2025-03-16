@@ -38,7 +38,7 @@ export default function Orders() {
 
   useEffect(() => {
     fetchOrders();
-  }, [user]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hàm dịch trạng thái sang tiếng Việt
   const translateStatus = (status) => {

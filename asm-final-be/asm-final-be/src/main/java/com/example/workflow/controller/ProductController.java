@@ -2,12 +2,15 @@ package com.example.workflow.controller;
 
 import com.example.workflow.model.Product;
 import com.example.workflow.service.ProductService;
+import net.sf.jasperreports.engine.JRException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -96,6 +99,30 @@ public class ProductController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Đã xảy ra lỗi khi lấy thông tin sản phẩm");
+        }
+    }
+
+    // API import sản phẩm từ file Excel với JasperReports (chỉ ADMIN)
+    @PostMapping("/products/import")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> importProductsFromExcel(@RequestParam("file") MultipartFile file) {
+        try {
+            // Kiểm tra file
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body("File không được để trống");
+            }
+            if (!file.getOriginalFilename().endsWith(".xlsx")) {
+                return ResponseEntity.badRequest().body("Vui lòng upload file Excel (.xlsx)");
+            }
+
+            // Gọi service để xử lý file với JasperReports
+            List<Product> importedProducts = productService.importProductsFromExcel(file);
+            return ResponseEntity.status(HttpStatus.CREATED).body(importedProducts);
+        } catch (IOException | JRException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Đã xảy ra lỗi khi import sản phẩm: " + e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 }

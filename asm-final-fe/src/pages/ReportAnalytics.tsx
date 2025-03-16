@@ -4,7 +4,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import { Bar, Pie } from 'react-chartjs-2';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Search, Download, Eye } from 'lucide-react';
-import axios from 'axios';
+import { getReport, exportReport } from '../services/reportService'; // Import từ file mới
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -29,26 +29,20 @@ const ReportAnalytics = () => {
         setErrorMessage('');
         const validFromDate = fromDate && /^\d{4}-\d{2}-\d{2}$/.test(fromDate) ? fromDate : null;
         const validToDate = toDate && /^\d{4}-\d{2}-\d{2}$/.test(toDate) ? toDate : null;
-        const response = await axios.get('http://localhost:8080/api/report', {
-          params: { 
-            fromDate: validFromDate, 
-            toDate: validToDate, 
-            status: statusFilter === 'ALL' ? null : statusFilter 
-          },
-        });
-        if (response.data && response.data.length > 0 && response.data[0].userName?.includes('Database error')) {
-          setErrorMessage(response.data[0].userName);
+        const response = await getReport(validFromDate, validToDate, statusFilter);
+        if (response.length > 0 && response[0].userName?.includes('Database error')) {
+          setErrorMessage(response[0].userName);
           setOrders([]);
           setTotalRevenue(0);
         } else {
-          setOrders(response.data);
-          setFilteredOrders(response.data);
-          const revenue = response.data.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+          setOrders(response);
+          setFilteredOrders(response);
+          const revenue = response.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
           setTotalRevenue(revenue);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Lỗi khi lấy dữ liệu báo cáo:', error);
-        setErrorMessage('Không thể tải dữ liệu báo cáo. Vui lòng thử lại.');
+        setErrorMessage(error.message || 'Không thể tải dữ liệu báo cáo!');
         setOrders([]);
         setTotalRevenue(0);
       } finally {
@@ -68,19 +62,12 @@ const ReportAnalytics = () => {
     setCurrentPage(1);
   }, [searchTerm, orders]);
 
-  const exportReport = async (format) => {
+  const exportReportHandler = async (format: string) => {
     try {
       setErrorMessage('');
       const validFromDate = fromDate && /^\d{4}-\d{2}-\d{2}$/.test(fromDate) ? fromDate : null;
       const validToDate = toDate && /^\d{4}-\d{2}-\d{2}$/.test(toDate) ? toDate : null;
-      const response = await axios.get(`http://localhost:8080/api/export/${format}`, {
-        params: { 
-          fromDate: validFromDate, 
-          toDate: validToDate, 
-          status: statusFilter === 'ALL' ? null : statusFilter 
-        },
-        responseType: 'blob',
-      });
+      const response = await exportReport(format, validFromDate, validToDate, statusFilter);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -90,7 +77,7 @@ const ReportAnalytics = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Lỗi khi xuất báo cáo ${format}:`, error);
       if (error.response && error.response.data) {
         const reader = new FileReader();
@@ -100,12 +87,12 @@ const ReportAnalytics = () => {
             const errorJson = JSON.parse(errorText);
             setErrorMessage(`Không thể xuất báo cáo ${format}: ${errorJson.error}`);
           } catch (e) {
-            setErrorMessage(`Không thể xuất báo cáo ${format}. Vui lòng thử lại.`);
+            setErrorMessage(`Không thể xuất báo cáo ${format}!`);
           }
         };
         reader.readAsText(error.response.data);
       } else {
-        setErrorMessage(`Không thể xuất báo cáo ${format}. Vui lòng thử lại.`);
+        setErrorMessage(error.message || `Không thể xuất báo cáo ${format}!`);
       }
     }
   };
@@ -121,10 +108,10 @@ const ReportAnalytics = () => {
             .filter(o => new Date(o.createdAt).toLocaleDateString('vi-VN') === date)
             .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
         ),
-        backgroundColor: 'rgba(75, 192, 192, 0.8)', // Màu xanh nhạt hơn để dễ nhìn
+        backgroundColor: 'rgba(75, 192, 192, 0.8)',
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 1,
-        barThickness: 20, // Giảm độ dày cột để cân bằng
+        barThickness: 20,
         maxBarThickness: 30,
       },
     ],
@@ -132,7 +119,7 @@ const ReportAnalytics = () => {
 
   const barChartOptions = {
     responsive: true,
-    maintainAspectRatio: false, // Cho phép điều chỉnh tỷ lệ
+    maintainAspectRatio: false,
     plugins: {
       legend: { position: 'top' },
       title: { display: true, text: 'Doanh thu theo ngày', font: { size: 16 } },
@@ -144,26 +131,14 @@ const ReportAnalytics = () => {
     },
     scales: {
       x: {
-        ticks: {
-          font: { size: 12 }, // Giảm kích thước chữ trục x để tránh chồng lấn
-          maxRotation: 0, // Không xoay nhãn
-          minRotation: 0,
-        },
-        grid: {
-          display: false, // Ẩn lưới trục x để gọn gàng
-        },
+        ticks: { font: { size: 12 }, maxRotation: 0, minRotation: 0 },
+        grid: { display: false },
       },
       y: {
         beginAtZero: true,
-        ticks: {
-          callback: (value) => value.toLocaleString('vi-VN'),
-          maxTicksLimit: 6, // Giới hạn số lượng nhãn trên trục y để cân bằng
-          font: { size: 12 },
-        },
-        grid: {
-          color: 'rgba(0, 0, 0, 0.1)', // Lưới mờ để dễ nhìn
-        },
-        suggestedMax: Math.max(...barChartData.datasets[0].data) * 1.2, // Tối đa 120% giá trị lớn nhất
+        ticks: { callback: (value) => value.toLocaleString('vi-VN'), maxTicksLimit: 6, font: { size: 12 } },
+        grid: { color: 'rgba(0, 0, 0, 0.1)' },
+        suggestedMax: Math.max(...barChartData.datasets[0].data) * 1.2,
       },
     },
   };
@@ -277,13 +252,13 @@ const ReportAnalytics = () => {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => exportReport('excel')}
+            onClick={() => exportReportHandler('excel')}
             className="bg-green-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-600"
           >
             <Download className="w-5 h-5" /> Excel
           </button>
           <button
-            onClick={() => exportReport('pdf')}
+            onClick={() => exportReportHandler('pdf')}
             className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-600"
           >
             <Download className="w-5 h-5" /> PDF
@@ -305,7 +280,7 @@ const ReportAnalytics = () => {
 
       {orders.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-gray-50 p-4 rounded-lg shadow h-64"> {/* Đặt chiều cao cố định */}
+          <div className="bg-gray-50 p-4 rounded-lg shadow h-64">
             <Bar data={barChartData} options={barChartOptions} />
           </div>
           <div className="bg-gray-50 p-4 rounded-lg shadow h-64">

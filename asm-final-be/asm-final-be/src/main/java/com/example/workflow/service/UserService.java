@@ -2,6 +2,7 @@ package com.example.workflow.service;
 import com.example.workflow.model.User;
 import com.example.workflow.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -11,12 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
 @Service
-public class UserService implements UserDetailsService { // Implements UserDetailsService
+public class UserService implements UserDetailsService {
 
     @Autowired
     private UserRepository userRepository;
@@ -121,10 +123,15 @@ public class UserService implements UserDetailsService { // Implements UserDetai
         UUID userId = UUID.fromString(userIdStr);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng với ID: " + userId));
+        // Tạo danh sách authorities (quyền) từ role của người dùng
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        String roleName = user.getRole().name(); // Chuyển enum thành chuỗi
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName.toUpperCase()));
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getId().toString())
                 .password(user.getPassword())
                 .roles(user.getRole().name())
+                .authorities(authorities)
                 .build();
     }
 

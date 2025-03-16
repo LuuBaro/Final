@@ -78,7 +78,7 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId().toString());
         claims.put("email", user.getEmail());
-        claims.put("roles", user.getRole().name());
+        claims.put("role", user.getRole().name());
         claims.put("fullName", user.getName());
         claims.put("phone", user.getPhone());
         return createToken(claims, user.getId().toString()); // Dùng userId làm subject
