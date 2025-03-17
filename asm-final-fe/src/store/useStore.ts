@@ -13,7 +13,7 @@ export const useStore = create((set, get) => {
           id: decoded.userId || decoded.sub || null,
           name: decoded.fullName || decoded.name || 'Người dùng',
           email: decoded.email || null,
-          role: decoded.roles || 'USER', // Lấy roles từ token, mặc định là 'USER' nếu không có
+          role: decoded.role || 'USER', // Lấy roles từ token, mặc định là 'USER' nếu không có
         };
       } catch (error) {
         console.error('Lỗi decode token:', error);
@@ -57,7 +57,7 @@ export const useStore = create((set, get) => {
           id: decoded.userId || decoded.sub || null,
           name: decoded.fullName || decoded.name || 'Người dùng',
           email: decoded.email || null,
-          role: role || decoded.roles || 'USER',
+          role: role || decoded.role || 'USER',
         };
         console.log('UserData sau khi đăng nhập:', userData);
   

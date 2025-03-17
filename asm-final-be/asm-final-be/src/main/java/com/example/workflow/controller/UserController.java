@@ -35,7 +35,7 @@ public class UserController {
     // Cập nhật thông tin người dùng
     @PutMapping("/users/{userId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<?> updateUser(@PathVariable UUID userId, @RequestBody User userDetails) {
+    public ResponseEntity<?> updateUser(@PathVariable("userId") UUID userId, @RequestBody User userDetails) {
         try {
             User updatedUser = userService.updateUser(userId, userDetails);
             return ResponseEntity.ok(updatedUser);
@@ -50,7 +50,7 @@ public class UserController {
     // Xóa người dùng
     @DeleteMapping("/users/{userId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<?> deleteUser(@PathVariable UUID userId) {
+    public ResponseEntity<?> deleteUser(@PathVariable("userId") UUID userId) {
         try {
             userService.deleteUser(userId);
             return ResponseEntity.ok("Đã xóa người dùng thành công");

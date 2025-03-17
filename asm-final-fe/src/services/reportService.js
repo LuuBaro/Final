@@ -11,22 +11,47 @@ const apiClient = axios.create({
   },
 });
 
-// Hàm lấy dữ liệu báo cáo
-export const getReport = async (fromDate, toDate, status) => {
-  const token = Cookies.get('authToken');
-  if (!token) {
-    throw new Error('No token found. Vui lòng đăng nhập để xem báo cáo.');
-  }
+// Lấy token từ cookie
+const getToken = () => {
+  return Cookies.get('authToken'); // Token được lưu trong cookie với key 'authToken'
+};
 
+// Interceptor để thêm token vào header cho tất cả các yêu cầu
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.warn('No token found in cookie, request may fail authentication');
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor để xử lý lỗi 401 (token hết hạn hoặc không hợp lệ)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      Cookies.remove('authToken'); // Xóa token nếu không hợp lệ
+      window.location.href = '/login'; // Chuyển hướng về trang đăng nhập
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Hàm lấy dữ liệu báo cáo (cần token)
+export const getReport = async (fromDate, toDate, status) => {
   try {
     const response = await apiClient.get('/report', {
       params: {
         fromDate,
         toDate,
         status: status === 'ALL' ? null : status,
-      },
-      headers: {
-        Authorization: `Bearer ${token}`,
       },
     });
     return response.data;
@@ -38,13 +63,8 @@ export const getReport = async (fromDate, toDate, status) => {
   }
 };
 
-// Hàm xuất báo cáo
+// Hàm xuất báo cáo (cần token)
 export const exportReport = async (format, fromDate, toDate, status) => {
-  const token = Cookies.get('authToken');
-  if (!token) {
-    throw new Error('No token found. Vui lòng đăng nhập để xuất báo cáo.');
-  }
-
   try {
     const response = await apiClient.get(`/export/${format}`, {
       params: {
@@ -52,10 +72,7 @@ export const exportReport = async (format, fromDate, toDate, status) => {
         toDate,
         status: status === 'ALL' ? null : status,
       },
-      responseType: 'blob',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      responseType: 'blob', // Để xử lý file tải xuống
     });
     return response;
   } catch (error) {

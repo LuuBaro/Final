@@ -22,6 +22,7 @@ public class CategoryController {
     @PostMapping("/categories")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> createCategory(@RequestBody Category category) {
+        System.out.println("POST /api/categories called");
         try {
             Category createdCategory = categoryService.createCategory(category);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdCategory);

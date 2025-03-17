@@ -126,13 +126,14 @@ public class UserService implements UserDetailsService {
         // Tạo danh sách authorities (quyền) từ role của người dùng
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         String roleName = user.getRole().name(); // Chuyển enum thành chuỗi
-        authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName.toUpperCase()));
+        authorities.add(new SimpleGrantedAuthority(roleName.toUpperCase()));
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getId().toString())
                 .password(user.getPassword())
                 .roles(user.getRole().name())
                 .authorities(authorities)
                 .build();
+
     }
 
     @Override

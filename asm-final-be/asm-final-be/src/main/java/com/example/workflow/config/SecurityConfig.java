@@ -4,10 +4,12 @@ import com.example.workflow.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,6 +25,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     private final UserService userService;
@@ -44,7 +47,8 @@ public class SecurityConfig {
                         // Cho phép truy cập không cần auth
                         .requestMatchers("/camunda/**", "/engine-rest/**").permitAll()
                         .requestMatchers("/api/login", "/api/register", "/api/forgot-password", "/api/reset-password").permitAll()
-                        .requestMatchers("/api/products", "/api/products/**", "/api/categories", "/api/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories" ).permitAll()
                         // Các endpoint khác yêu cầu xác thực
                         .anyRequest().authenticated()
                 )

@@ -240,7 +240,7 @@ const UserManagement = () => {
             ) : (
               <PlusCircle className="w-5 h-5" />
             )}
-            <span>{editUser ? 'Cập nhật' : 'Thêm'}</span>
+            <span className="w-full">{editUser ? 'Cập nhật' : 'Thêm'}</span>
           </button>
           {editUser && (
             <button

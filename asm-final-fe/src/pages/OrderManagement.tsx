@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion'; // Thêm AnimatePresence cho modal
+import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
-import { Search, CheckCircle, XCircle, Ban, X } from 'lucide-react'; // Thêm icon X cho nút đóng modal
+import { Search, CheckCircle, XCircle, Ban, X } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import BpmnDiagram from '../pages/BpmnDiagram'; // Import component mới
 import {
   getOrders,
   approveOrder,
@@ -20,9 +21,10 @@ const OrderManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('PENDING');
-  const [selectedOrder, setSelectedOrder] = useState(null); // State để lưu đơn hàng được chọn
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [bpmnXml, setBpmnXml] = useState(null); // State để lưu BPMN XML
   const itemsPerPage = 5;
-
+  const processDefinitionId = 'orderProcess:1:aae426cf-0285-11f0-9198-088fc3618e8d';
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -41,7 +43,26 @@ const OrderManagement = () => {
   };
 
   useEffect(() => {
-    fetchOrders();
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        await fetchOrders();
+  
+        const response = await fetch(
+          `http://localhost:8080/engine-rest/process-definition/${processDefinitionId}/xml`
+        );
+        if (!response.ok) throw new Error('Không thể lấy sơ đồ BPMN');
+        const data = await response.json();
+        console.log('bpmn20Xml từ API:', data.bpmn20Xml); // Log để kiểm tra
+        setBpmnXml(data.bpmn20Xml);
+      } catch (error) {
+        console.error('Lỗi khi lấy dữ liệu:', error.message);
+        toast.error(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   const translateStatus = (status) => {
@@ -298,12 +319,10 @@ const OrderManagement = () => {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-  // Hàm mở modal chi tiết
   const openOrderDetails = (order) => {
     setSelectedOrder(order);
   };
 
-  // Hàm đóng modal
   const closeOrderDetails = () => {
     setSelectedOrder(null);
   };
@@ -318,6 +337,16 @@ const OrderManagement = () => {
       className="bg-white p-6 rounded-lg shadow-lg max-w-7xl mx-auto"
     >
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản lý đơn hàng</h2>
+
+      {/* Hiển thị sơ đồ BPMN */}
+      <div className="mb-8">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">Sơ đồ quy trình đặt hàng</h3>
+        {bpmnXml ? (
+          <BpmnDiagram bpmnXml={bpmnXml} processDefinitionId={processDefinitionId} />
+        ) : (
+          <p className="text-gray-500">Đang tải sơ đồ...</p>
+        )}
+      </div>
 
       <div className="mb-6 flex justify-between items-center">
         <div className="relative w-1/3">
@@ -540,7 +569,7 @@ const OrderManagement = () => {
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ duration: 0.3 }}
               className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto relative"
-              onClick={(e) => e.stopPropagation()} // Ngăn đóng modal khi nhấp vào nội dung
+              onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={closeOrderDetails}

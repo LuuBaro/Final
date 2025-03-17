@@ -17,7 +17,7 @@ export const getToken = () => {
 apiClient.interceptors.request.use(
   (config) => {
     const token = getToken();
-    if (token) {
+    if (token && (config.method === 'get' || config.method === 'post' || config.method === 'put' || config.method === 'delete')) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;

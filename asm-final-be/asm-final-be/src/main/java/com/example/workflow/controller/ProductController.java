@@ -24,7 +24,7 @@ public class ProductController {
 
     // Thêm sản phẩm mới (chỉ ADMIN)
     @PostMapping("/products")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> createProduct(@RequestBody Product product) {
         try {
             // Kiểm tra các trường bắt buộc
@@ -53,7 +53,7 @@ public class ProductController {
 
     // Cập nhật sản phẩm (chỉ ADMIN)
     @PutMapping("/products/{productId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> updateProduct(@PathVariable("productId") UUID productId, @RequestBody Product productDetails) {
         try {
             Product updatedProduct = productService.updateProduct(productId, productDetails);
@@ -68,7 +68,7 @@ public class ProductController {
 
     // Xóa sản phẩm (chỉ ADMIN)
     @DeleteMapping("/products/{productId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> deleteProduct(@PathVariable("productId") UUID productId) {
         try {
             productService.deleteProduct(productId);
