@@ -1,3 +1,4 @@
+// src/components/Orders.jsx
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -20,7 +21,9 @@ export default function Orders() {
     if (user && user.id) {
       try {
         const data = await getOrdersByUserId(user.id);
-        const sortedData = (data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        console.log('Dữ liệu đơn hàng từ API:', data); // Debug dữ liệu trả về
+        const validData = Array.isArray(data) ? data : [];
+        const sortedData = validData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setOrders(sortedData);
         filterOrdersByTab(activeTab, sortedData);
       } catch (error) {
@@ -49,7 +52,7 @@ export default function Orders() {
       PAID: 'Đã thanh toán',
       FAILED: 'Thanh toán thất bại',
       DELETED: 'Đã xóa',
-      APPROVED: 'Đang giao hàng', // Thêm trạng thái APPROVED
+      APPROVED: 'Đang giao hàng',
     };
     return statusMap[status] || status;
   };
@@ -139,7 +142,7 @@ export default function Orders() {
   const filterOrdersByTab = (tab, ordersList = orders) => {
     let filtered = ordersList;
     if (tab === 'ALL') {
-      filtered = ordersList.filter((order) => order.status !== 'DELETED'); // Loại trừ DELETED khỏi tab ALL
+      filtered = ordersList.filter((order) => order.status !== 'DELETED');
     } else {
       filtered = ordersList.filter((order) => order.status === tab);
     }
@@ -299,7 +302,7 @@ export default function Orders() {
                             : order.status === 'PAID'
                             ? 'bg-blue-100 text-blue-800'
                             : order.status === 'APPROVED'
-                            ? 'bg-teal-100 text-teal-800' // Màu cho APPROVED
+                            ? 'bg-teal-100 text-teal-800'
                             : order.status === 'FAILED'
                             ? 'bg-gray-100 text-gray-800'
                             : order.status === 'DELETED'
@@ -332,7 +335,7 @@ export default function Orders() {
                       )}
                     </td>
                     <td className="py-4 px-6">
-                      {order.items && order.items.length > 0 && (
+                      {Array.isArray(order.items) && order.items.length > 0 ? (
                         <div className="relative group">
                           <button className="text-indigo-600 hover:underline font-medium relative z-10">
                             Xem chi tiết
@@ -387,6 +390,8 @@ export default function Orders() {
                             </div>
                           </motion.div>
                         </div>
+                      ) : (
+                        <span className="text-gray-500">Không có chi tiết</span>
                       )}
                     </td>
                   </motion.tr>

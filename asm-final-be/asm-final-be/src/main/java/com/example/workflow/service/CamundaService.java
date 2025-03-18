@@ -78,7 +78,7 @@ public class CamundaService implements JavaDelegate {
 //            boolean isPaymentSuccessful = random.nextBoolean();
         boolean isPaymentSuccessful = true;
         execution.setVariable("isPaymentSuccessful", isPaymentSuccessful);
-        execution.setVariable("paymentStatus", isPaymentSuccessful ? "SUCCESS" : "FAILED"); // Thêm dòng này
+        execution.setVariable("paymentStatus", isPaymentSuccessful ? "SUCCESS" : "FAILED");
         // Lấy orderId từ biến quy trình
         UUID orderId = UUID.fromString((String) execution.getVariable("orderId"));
         Order order = orderRepository.findById(orderId).orElse(null);

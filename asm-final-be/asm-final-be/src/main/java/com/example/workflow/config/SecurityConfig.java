@@ -69,6 +69,10 @@ public class SecurityConfig {
         return source;
     }
 
+    /**
+     * Cấu hình AuthenticationProvider dùng DaoAuthenticationProvider.
+     * Sử dụng UserService để tải thông tin người dùng và PasswordEncoder để mã hóa mật khẩu.
+     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
@@ -77,11 +81,18 @@ public class SecurityConfig {
         return authenticationProvider;
     }
 
+    /**
+     * Cấu hình AuthenticationManager để quản lý xác thực.
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * Cấu hình PasswordEncoder sử dụng BCrypt.
+     * Dùng để mã hóa và kiểm tra mật khẩu.
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
