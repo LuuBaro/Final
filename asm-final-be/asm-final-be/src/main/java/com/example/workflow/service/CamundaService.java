@@ -42,26 +42,39 @@ public class CamundaService implements JavaDelegate {
 
     // Kiểm tra tồn kho
     private void processStockCheck(DelegateExecution execution) {
-        // Lấy thông tin sản phẩm từ biến trong quy trình
         UUID orderId = UUID.fromString((String) execution.getVariable("orderId"));
         boolean orderIsValid = true;
 
         Order order = orderRepository.findById(orderId).orElse(null);
         if (order == null) {
+            System.out.println("Order không tồn tại với orderId: " + orderId);
             execution.setVariable("isInStock", false);
             return;
         }
 
+        System.out.println("Kiểm tra đơn hàng: " + orderId);
         for (OrderItem detailRequest : order.getItems()) {
             Product product = productRepository.findById(detailRequest.getProduct().getId()).orElse(null);
-            if (product == null || detailRequest.getQuantity() > product.getStock()) {
+            if (product == null) {
+                System.out.println("Sản phẩm không tồn tại với ID: " + detailRequest.getProduct().getId());
                 orderIsValid = false;
                 break;
             }
+            int stock = product.getStock();
+            int quantity = detailRequest.getQuantity();
+            System.out.println("Sản phẩm: " + product.getName() + ", Stock: " + stock + ", Quantity yêu cầu: " + quantity);
+
+            if (quantity > stock) {
+                System.out.println("Số lượng yêu cầu (" + quantity + ") vượt quá tồn kho (" + stock + ") cho sản phẩm: " + product.getName());
+                orderIsValid = false;
+                break;
+            } else {
+                System.out.println("Số lượng yêu cầu (" + quantity + ") phù hợp với tồn kho (" + stock + ") cho sản phẩm: " + product.getName());
+            }
         }
         execution.setVariable("isInStock", orderIsValid);
+        System.out.println("Kết quả kiểm tra tồn kho: isInStock = " + orderIsValid);
 
-        // Cập nhật trạng thái đơn hàng
         order.setStatus(Order.OrderStatus.CONFIRMED);
         orderRepository.save(order);
     }
