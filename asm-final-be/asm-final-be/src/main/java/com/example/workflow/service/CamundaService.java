@@ -7,6 +7,8 @@ import com.example.workflow.repository.OrderRepository;
 import com.example.workflow.repository.ProductRepository;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,7 @@ public class CamundaService implements JavaDelegate {
     @Autowired
     ProductRepository productRepository;
 
+    private static final Logger logger = LoggerFactory.getLogger(CamundaService.class);
     @Override
     public void execute(DelegateExecution execution) throws Exception {
         String activityId = execution.getCurrentActivityId();
@@ -45,38 +48,59 @@ public class CamundaService implements JavaDelegate {
         UUID orderId = UUID.fromString((String) execution.getVariable("orderId"));
         boolean orderIsValid = true;
 
+        // Tìm đơn hàng
         Order order = orderRepository.findById(orderId).orElse(null);
         if (order == null) {
-            System.out.println("Order không tồn tại với orderId: " + orderId);
+            logger.error("Order không tồn tại với orderId: {}", orderId);
             execution.setVariable("isInStock", false);
             return;
         }
 
-        System.out.println("Kiểm tra đơn hàng: " + orderId);
+        logger.info("Kiểm tra đơn hàng: {}", orderId);
+
+        // Kiểm tra tồn kho cho từng sản phẩm trong đơn hàng
         for (OrderItem detailRequest : order.getItems()) {
             Product product = productRepository.findById(detailRequest.getProduct().getId()).orElse(null);
             if (product == null) {
-                System.out.println("Sản phẩm không tồn tại với ID: " + detailRequest.getProduct().getId());
+                logger.error("Sản phẩm không tồn tại với ID: {}", detailRequest.getProduct().getId());
                 orderIsValid = false;
                 break;
             }
+
             int stock = product.getStock();
             int quantity = detailRequest.getQuantity();
-            System.out.println("Sản phẩm: " + product.getName() + ", Stock: " + stock + ", Quantity yêu cầu: " + quantity);
+
+            logger.info("Sản phẩm: {}, Stock: {}, Quantity yêu cầu: {}", product.getName(), stock, quantity);
 
             if (quantity > stock) {
-                System.out.println("Số lượng yêu cầu (" + quantity + ") vượt quá tồn kho (" + stock + ") cho sản phẩm: " + product.getName());
+                logger.warn("Số lượng yêu cầu ({}) vượt quá tồn kho ({}) cho sản phẩm: {}", quantity, stock, product.getName());
                 orderIsValid = false;
                 break;
             } else {
-                System.out.println("Số lượng yêu cầu (" + quantity + ") phù hợp với tồn kho (" + stock + ") cho sản phẩm: " + product.getName());
+                logger.info("Số lượng yêu cầu ({}) phù hợp với tồn kho ({}) cho sản phẩm: {}", quantity, stock, product.getName());
             }
         }
-        execution.setVariable("isInStock", orderIsValid);
-        System.out.println("Kết quả kiểm tra tồn kho: isInStock = " + orderIsValid);
 
-        order.setStatus(Order.OrderStatus.CONFIRMED);
+        // Lưu kết quả kiểm tra tồn kho
+        execution.setVariable("isInStock", orderIsValid);
+        logger.info("Kết quả kiểm tra tồn kho: isInStock = {}", orderIsValid);
+
+        // Chỉ cập nhật trạng thái đơn hàng và trừ tồn kho nếu tồn kho đủ
+        if (orderIsValid) {
+            order.setStatus(Order.OrderStatus.CONFIRMED);
+            // Trừ tồn kho ngay sau khi kiểm tra thành công
+            for (OrderItem detailRequest : order.getItems()) {
+                Product product = productRepository.findByIdForUpdate(detailRequest.getProduct().getId())
+                        .orElseThrow(() -> new RuntimeException("Product not found with ID: " + detailRequest.getProduct().getId()));
+                product.setStock(product.getStock() - detailRequest.getQuantity());
+                productRepository.save(product);
+                logger.info("Đã trừ tồn kho: Sản phẩm = {}, Stock mới = {}", product.getName(), product.getStock());
+            }
+        } else {
+            order.setStatus(Order.OrderStatus.CANCELED);
+        }
         orderRepository.save(order);
+        logger.info("Cập nhật trạng thái đơn hàng: orderId = {}, status = {}", orderId, order.getStatus());
     }
 
     // Xác nhận thanh toán

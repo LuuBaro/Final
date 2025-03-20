@@ -41,8 +41,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // Lấy header Authorization từ yêu cầu
         final String authorizationHeader = request.getHeader("Authorization");
-        System.out.println("Request URL: " + request.getRequestURI());
-        System.out.println("Authorization Header: " + authorizationHeader);
 
         String userId = null;
         String jwt = null;
@@ -52,7 +50,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             jwt = authorizationHeader.substring(7); // Loại bỏ "Bearer " prefix
             try {
                 userId = jwtService.extractUsername(jwt); // Trích xuất userId từ token
-                System.out.println("Extracted userId from token: " + userId);
             } catch (Exception e) {
                 System.err.println("Lỗi khi trích xuất userId từ token: " + e.getMessage());
             }
@@ -67,8 +64,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // Tải thông tin người dùng từ userId
             try {
                 userDetails = this.userService.loadUserById(userId);
-                System.out.println("Loaded UserDetails: " + (userDetails != null ? userDetails.getUsername() : "null"));
-                System.out.println("UserDetails authorities: " + (userDetails != null ? userDetails.getAuthorities() : "null"));
             } catch (UsernameNotFoundException e) {
                 System.err.println("Không tìm thấy user với userId: " + userId);
             } catch (Exception e) {
@@ -77,7 +72,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             // Trích xuất role từ token
             String role = jwtService.extractClaim(jwt, claims -> claims.get("role", String.class));
-            System.out.println("Role extracted from token: " + role);
 
             // Kiểm tra và đặt xác thực nếu token hợp lệ
             if (userDetails != null && jwtService.validateToken(jwt, userDetails) && role != null) {
@@ -86,14 +80,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 List<GrantedAuthority> authorities = Collections.singletonList(
                         new SimpleGrantedAuthority(role)
                 );
-                System.out.println("Authorities set for userId " + userId + ": " + authorities);
 
                 // Tạo đối tượng xác thực và đặt vào SecurityContext
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
-                System.out.println("Authentication set successfully for userId: " + userId);
             } else {
                 System.err.println("Xác thực thất bại cho userId: " + userId);
                 if (userDetails == null) {

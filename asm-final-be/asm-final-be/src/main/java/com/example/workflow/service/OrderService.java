@@ -79,14 +79,9 @@ public class OrderService {
         BigDecimal totalAmount = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
-        // Xử lý từng mục trong giỏ hàng
+        // Xử lý từng mục trong giỏ hàng để tạo OrderItem
         for (Cart cartItem : cartItems) {
             Product product = cartItem.getProduct();
-
-            // Kiểm tra số lượng tồn kho
-            if (product.getStock() < cartItem.getQuantity()) {
-                throw new RuntimeException("Insufficient stock for product: " + product.getName());
-            }
 
             // Tạo OrderItem
             OrderItem orderItem = new OrderItem();
@@ -98,10 +93,6 @@ public class OrderService {
 
             orderItems.add(orderItem);
             totalAmount = totalAmount.add(orderItem.getSubtotal());
-
-            // Cập nhật số lượng tồn kho
-            product.setStock(product.getStock() - cartItem.getQuantity());
-            productRepository.save(product);
         }
 
         order.setItems(orderItems);
@@ -120,7 +111,7 @@ public class OrderService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("orderId", savedOrder.getId().toString());
         variables.put("userId", user.getId().toString());
-        variables.put("totalAmount", totalAmount.toString()); // Chuyển BigDecimal thành String nếu cần
+        variables.put("totalAmount", totalAmount.toString());
 
         runtimeService.startProcessInstanceByKey(
                 "orderProcess",                  // Tên quy trình trong Camunda

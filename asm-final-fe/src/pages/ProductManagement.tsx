@@ -10,12 +10,6 @@ import {
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import {
-  storage,
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "../firebaseConfig";
-import {
   getProducts,
   getCategories,
   addProduct,
@@ -33,7 +27,6 @@ const ProductManagement = () => {
     price: "",
     stock: "",
     categoryId: "",
-    imageUrl: "",
     imageFile: null,
   });
   const [editProduct, setEditProduct] = useState(null);
@@ -79,54 +72,23 @@ const ProductManagement = () => {
     }
   };
 
-  const uploadImageToFirebase = async (file) => {
-    const storageRef = ref(storage, `images/${file.name}_${Date.now()}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    return new Promise((resolve, reject) => {
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log("Upload is " + progress + "% done");
-        },
-        (error) => {
-          console.error("Lỗi khi upload lên Firebase:", error);
-          reject(error);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          console.log("File available at:", downloadURL);
-          resolve(downloadURL);
-        }
-      );
-    });
-  };
-
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
       setIsProcessing(true);
-      let imageUrl = "";
-      if (newProduct.imageFile) {
-        imageUrl = await uploadImageToFirebase(newProduct.imageFile);
-      }
 
+      // Chuẩn bị dữ liệu sản phẩm
       const productData = {
         name: newProduct.name,
         price: parseFloat(newProduct.price),
         stock: parseInt(newProduct.stock),
-        category: {
-          id: newProduct.categoryId,
-        },
-        imageUrl,
+        categoryId: newProduct.categoryId,
       };
 
-      console.log("Product data gửi đi:", productData);
+      // Gọi API addProduct từ productService.js
+      const newProductData = await addProduct(productData, newProduct.imageFile);
 
-      const newProductData = await addProduct(productData);
-
+      // Cập nhật danh sách sản phẩm
       const selectedCategory = categories.find(
         (cat) => cat.id === newProduct.categoryId
       );
@@ -144,7 +106,6 @@ const ProductManagement = () => {
         price: "",
         stock: "",
         categoryId: "",
-        imageUrl: "",
         imageFile: null,
       });
       setCurrentPage(1);
@@ -164,7 +125,6 @@ const ProductManagement = () => {
       price: product.price.toString(),
       stock: product.stock.toString(),
       categoryId: product.category.id,
-      imageUrl: product.imageUrl || "",
       imageFile: null,
     });
   };
@@ -173,28 +133,23 @@ const ProductManagement = () => {
     e.preventDefault();
     try {
       setIsProcessing(true);
-      let imageUrl = newProduct.imageUrl;
-      if (newProduct.imageFile) {
-        imageUrl = await uploadImageToFirebase(newProduct.imageFile);
-      }
 
+      // Chuẩn bị dữ liệu sản phẩm
       const productData = {
         name: newProduct.name,
         price: parseFloat(newProduct.price),
         stock: parseInt(newProduct.stock),
-        category: {
-          id: newProduct.categoryId,
-        },
-        imageUrl,
+        categoryId: newProduct.categoryId,
       };
 
-      console.log("Product data gửi đi:", productData);
-
+      // Gọi API updateProduct từ productService.js
       const updatedProductData = await updateProduct(
         editProduct.id,
-        productData
+        productData,
+        newProduct.imageFile
       );
 
+      // Cập nhật danh sách sản phẩm
       const selectedCategory = categories.find(
         (cat) => cat.id === newProduct.categoryId
       );
@@ -217,7 +172,6 @@ const ProductManagement = () => {
         price: "",
         stock: "",
         categoryId: "",
-        imageUrl: "",
         imageFile: null,
       });
       toast.success("Sản phẩm đã được cập nhật!");
@@ -280,7 +234,12 @@ const ProductManagement = () => {
         } else {
           reject("Hủy xóa sản phẩm!");
         }
-      })
+      }),
+      {
+        loading: "Đang xóa sản phẩm...",
+        success: (message) => message,
+        error: (message) => message,
+      }
     );
   };
 
@@ -620,183 +579,6 @@ const ProductManagement = () => {
             </div>
           )}
         </div>
-
-        {/* Bảng chỉnh sửa khi có dữ liệu */}
-        {isEditing && (
-          <div className="mt-6">
-            <h4 className="text-lg font-medium text-gray-800 mb-3">
-              Danh sách sản phẩm (Chỉnh sửa)
-            </h4>
-            <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-              <table className="w-full bg-white">
-                <thead className="bg-indigo-50 text-gray-700">
-                  <tr>
-                    <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
-                      Tên sản phẩm
-                    </th>
-                    <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
-                      ID Danh mục
-                    </th>
-                    <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
-                      Giá (VNĐ)
-                    </th>
-                    <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
-                      Số lượng
-                    </th>
-                    <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
-                      URL Hình ảnh
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {editedData.map((row, index) => (
-                    <tr
-                      key={index}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="p-3 border-b border-gray-200">
-                        <input
-                          type="text"
-                          value={row.name || ""}
-                          onChange={(e) =>
-                            handleEditChange(index, "name", e.target.value)
-                          }
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </td>
-                      <td className="p-3 border-b border-gray-200">
-                        <input
-                          type="text"
-                          value={row.category_id || ""}
-                          onChange={(e) =>
-                            handleEditChange(
-                              index,
-                              "category_id",
-                              e.target.value
-                            )
-                          }
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </td>
-                      <td className="p-3 border-b border-gray-200">
-                        <input
-                          type="number"
-                          value={row.price || ""}
-                          onChange={(e) =>
-                            handleEditChange(index, "price", e.target.value)
-                          }
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </td>
-                      <td className="p-3 border-b border-gray-200">
-                        <input
-                          type="number"
-                          value={row.stock || ""}
-                          onChange={(e) =>
-                            handleEditChange(index, "stock", e.target.value)
-                          }
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </td>
-                      <td className="p-3 border-b border-gray-200">
-                        <input
-                          type="text"
-                          value={row.imageUrl || ""}
-                          onChange={(e) =>
-                            handleEditChange(index, "imageUrl", e.target.value)
-                          }
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Nút hành động */}
-            <div className="mt-6 flex space-x-4">
-              <button
-                onClick={handleImport}
-                className={`px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 flex items-center space-x-2 shadow-md ${
-                  isProcessing ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <svg
-                    className="animate-spin h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8h-8z"
-                    ></path>
-                  </svg>
-                ) : (
-                  <FileSpreadsheet className="w-5 h-5" />
-                )}
-                <span>{isProcessing ? "Đang import..." : "Import"}</span>
-              </button>
-              <button
-                onClick={handleDownload}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center space-x-2 shadow-md"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  ></path>
-                </svg>
-                <span>Tải xuống file đã chỉnh sửa</span>
-              </button>
-              <button
-                onClick={() => {
-                  setFileToImport(null);
-                  setExcelData([]);
-                  setEditedData([]);
-                  setIsEditing(false);
-                }}
-                className="px-6 py-2.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center space-x-2 shadow-md"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  ></path>
-                </svg>
-                <span>Hủy</span>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <form
@@ -953,7 +735,6 @@ const ProductManagement = () => {
                   price: "",
                   stock: "",
                   categoryId: "",
-                  imageUrl: "",
                   imageFile: null,
                 });
               }}

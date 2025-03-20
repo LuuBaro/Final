@@ -4,6 +4,10 @@ import com.example.workflow.model.Category;
 import com.example.workflow.model.Product;
 import com.example.workflow.repository.CategoryRepository;
 import com.example.workflow.repository.ProductRepository;
+import com.google.cloud.storage.Storage;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.cloud.StorageClient;
+import jakarta.persistence.EntityManager;
 import net.sf.jasperreports.engine.*;
 import net.sf.jasperreports.engine.data.JRXlsxDataSource;
 import net.sf.jasperreports.engine.design.JRDesignField;
@@ -30,21 +34,43 @@ public class ProductService {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private FirebaseApp firebaseApp;
+
+    @Autowired
+    private EntityManager entityManager;
+
     @Transactional
-    public Product createProduct(Product product) {
+    public Product createProduct(Product product, UUID categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại với ID: " + categoryId));
+        product.setCategory(category);
+        product.setCreatedAt(LocalDateTime.now());
         return productRepository.save(product);
     }
 
     @Transactional
-    public Product updateProduct(UUID productId, Product productDetails) {
+    public Product updateProduct(UUID productId, String name, UUID categoryId, BigDecimal price, Integer stock, String imageUrl) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + productId));
 
-        product.setName(productDetails.getName());
-        product.setCategory(productDetails.getCategory());
-        product.setPrice(productDetails.getPrice());
-        product.setStock(productDetails.getStock());
-        product.setImageUrl(productDetails.getImageUrl());
+        if (name != null && !name.trim().isEmpty()) {
+            product.setName(name);
+        }
+        if (categoryId != null) {
+            Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại với ID: " + categoryId));
+            product.setCategory(category);
+        }
+        if (price != null && price.compareTo(BigDecimal.ZERO) > 0) {
+            product.setPrice(price);
+        }
+        if (stock != null && stock >= 0) {
+            product.setStock(stock);
+        }
+        if (imageUrl != null) {
+            product.setImageUrl(imageUrl);
+        }
 
         return productRepository.save(product);
     }
@@ -52,7 +78,15 @@ public class ProductService {
     @Transactional
     public void deleteProduct(UUID productId) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + productId));
+
+        // Xóa ảnh trên Firebase Storage nếu có
+        if (product.getImageUrl() != null && !product.getImageUrl().isEmpty()) {
+            Storage storage = StorageClient.getInstance(firebaseApp).bucket().getStorage();
+            String filePath = extractFilePathFromUrl(product.getImageUrl());
+            storage.delete(firebaseApp.getOptions().getStorageBucket(), filePath);
+        }
+
         productRepository.delete(product);
     }
 
@@ -63,6 +97,12 @@ public class ProductService {
     public Product getProductById(UUID productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+    }
+
+    // Hàm hỗ trợ trích xuất file path từ URL Firebase Storage
+    private String extractFilePathFromUrl(String imageUrl) {
+        String bucketPrefix = "https://storage.googleapis.com/" + firebaseApp.getOptions().getStorageBucket() + "/";
+        return imageUrl.replace(bucketPrefix, "");
     }
 
     @Transactional
