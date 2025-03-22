@@ -46,7 +46,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không dùng session
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép truy cập không cần auth
-                        .requestMatchers("/camunda/**", "/engine-rest/**").permitAll()
+                        .requestMatchers("/camunda/**", "/engine-rest/**"   ).permitAll()
                         .requestMatchers("/api/login", "/api/register", "/api/forgot-password", "/api/reset-password").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories" ).permitAll()

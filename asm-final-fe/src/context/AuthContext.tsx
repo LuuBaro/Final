@@ -78,7 +78,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setCart([]);
       }
     } else {
-      console.log('No user or user ID, setting cart to empty');
       setCart([]);
     }
   };

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import { useStore } from '../store/useStore';
-import { getOrdersByUserId, cancelOrder, deleteOrder } from '../services/orderService';
+import { getOrdersByUserId, cancelOrder } from '../services/orderService';
 
 export default function Orders() {
   const { user } = useStore();
@@ -77,42 +77,6 @@ export default function Orders() {
                 }
               }}
               className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-            >
-              Có
-            </button>
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400"
-            >
-              Không
-            </button>
-          </div>
-        </div>
-      ),
-      { duration: Infinity }
-    );
-  };
-
-  // Xử lý xóa đơn hàng với toast confirm
-  const handleDeleteOrder = (orderId) => {
-    toast(
-      (t) => (
-        <div className="text-center">
-          <p className="mb-4">Bạn có chắc chắn muốn xóa đơn hàng này không?</p>
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={async () => {
-                try {
-                  await deleteOrder(orderId);
-                  toast.success('Đơn hàng đã được xóa thành công!');
-                  await fetchOrders();
-                  toast.dismiss(t.id);
-                } catch (error) {
-                  toast.error(error.message);
-                  toast.dismiss(t.id);
-                }
-              }}
-              className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
             >
               Có
             </button>
@@ -323,14 +287,6 @@ export default function Orders() {
                           className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors shadow-md"
                         >
                           Hủy đơn hàng
-                        </button>
-                      )}
-                      {(order.status === 'CANCELED' || order.status === 'FAILED') && (
-                        <button
-                          onClick={() => handleDeleteOrder(order.id)}
-                          className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors shadow-md"
-                        >
-                          Xóa đơn hàng
                         </button>
                       )}
                     </td>
