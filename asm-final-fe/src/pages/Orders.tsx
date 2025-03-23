@@ -1,9 +1,10 @@
+// src/components/Orders.jsx
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import { useStore } from '../store/useStore';
-import { getOrdersByUserId, cancelOrder, deleteOrder } from '../services/orderService';
+import { getOrdersByUserId, cancelOrder } from '../services/orderService';
 
 export default function Orders() {
   const { user } = useStore();
@@ -20,7 +21,9 @@ export default function Orders() {
     if (user && user.id) {
       try {
         const data = await getOrdersByUserId(user.id);
-        const sortedData = (data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        console.log('Dữ liệu đơn hàng từ API:', data); // Debug dữ liệu trả về
+        const validData = Array.isArray(data) ? data : [];
+        const sortedData = validData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setOrders(sortedData);
         filterOrdersByTab(activeTab, sortedData);
       } catch (error) {
@@ -38,7 +41,7 @@ export default function Orders() {
 
   useEffect(() => {
     fetchOrders();
-  }, [user]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hàm dịch trạng thái sang tiếng Việt
   const translateStatus = (status) => {
@@ -49,6 +52,7 @@ export default function Orders() {
       PAID: 'Đã thanh toán',
       FAILED: 'Thanh toán thất bại',
       DELETED: 'Đã xóa',
+      APPROVED: 'Đang giao hàng',
     };
     return statusMap[status] || status;
   };
@@ -68,49 +72,11 @@ export default function Orders() {
                   await fetchOrders();
                   toast.dismiss(t.id);
                 } catch (error) {
-                  console.error('Lỗi khi hủy đơn hàng:', error.message);
                   toast.error(error.message);
                   toast.dismiss(t.id);
                 }
               }}
               className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-            >
-              Có
-            </button>
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400"
-            >
-              Không
-            </button>
-          </div>
-        </div>
-      ),
-      { duration: Infinity }
-    );
-  };
-
-  // Xử lý xóa đơn hàng với toast confirm
-  const handleDeleteOrder = (orderId) => {
-    toast(
-      (t) => (
-        <div className="text-center">
-          <p className="mb-4">Bạn có chắc chắn muốn xóa đơn hàng này không?</p>
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={async () => {
-                try {
-                  await deleteOrder(orderId);
-                  toast.success('Đơn hàng đã được xóa thành công!');
-                  await fetchOrders();
-                  toast.dismiss(t.id);
-                } catch (error) {
-                  console.error('Lỗi khi xóa đơn hàng:', error.message);
-                  toast.error(error.message);
-                  toast.dismiss(t.id);
-                }
-              }}
-              className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
             >
               Có
             </button>
@@ -219,7 +185,7 @@ export default function Orders() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="mb-8 flex justify-center space-x-2 flex-wrap gap-2"
         >
-          {['ALL', 'PENDING', 'CONFIRMED', 'CANCELED', 'PAID', 'FAILED', 'DELETED'].map((tab) => (
+          {['ALL', 'PENDING', 'CONFIRMED', 'PAID', 'APPROVED', 'FAILED', 'CANCELED', 'DELETED'].map((tab) => (
             <button
               key={tab}
               onClick={() => handleTabClick(tab)}
@@ -299,6 +265,8 @@ export default function Orders() {
                             ? 'bg-red-100 text-red-800'
                             : order.status === 'PAID'
                             ? 'bg-blue-100 text-blue-800'
+                            : order.status === 'APPROVED'
+                            ? 'bg-teal-100 text-teal-800'
                             : order.status === 'FAILED'
                             ? 'bg-gray-100 text-gray-800'
                             : order.status === 'DELETED'
@@ -321,17 +289,9 @@ export default function Orders() {
                           Hủy đơn hàng
                         </button>
                       )}
-                      {order.status === 'CANCELED' && (
-                        <button
-                          onClick={() => handleDeleteOrder(order.id)}
-                          className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors shadow-md"
-                        >
-                          Xóa đơn hàng
-                        </button>
-                      )}
                     </td>
                     <td className="py-4 px-6">
-                      {order.items && order.items.length > 0 && (
+                      {Array.isArray(order.items) && order.items.length > 0 ? (
                         <div className="relative group">
                           <button className="text-indigo-600 hover:underline font-medium relative z-10">
                             Xem chi tiết
@@ -386,6 +346,8 @@ export default function Orders() {
                             </div>
                           </motion.div>
                         </div>
+                      ) : (
+                        <span className="text-gray-500">Không có chi tiết</span>
                       )}
                     </td>
                   </motion.tr>

@@ -1,37 +1,49 @@
-// src/components/ProductManagement.js
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Toaster, toast } from 'react-hot-toast';
-import { Edit, Trash2, PlusCircle, Search } from 'lucide-react';
-import LoadingSpinner from '../components/LoadingSpinner';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Toaster, toast } from "react-hot-toast";
 import {
-  storage,
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from '../firebaseConfig';
-import { getProducts, getCategories, addProduct, updateProduct, deleteProduct } from '../services/productService';
+  Edit,
+  Trash2,
+  PlusCircle,
+  Search,
+  FileSpreadsheet,
+} from "lucide-react";
+import LoadingSpinner from "../components/LoadingSpinner";
+import {
+  getProducts,
+  getCategories,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  importProductsFromExcel,
+} from "../services/productService";
+import * as XLSX from "xlsx";
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [newProduct, setNewProduct] = useState({
-    name: '',
-    price: '',
-    stock: '',
-    categoryId: '',
-    imageUrl: '',
+    name: "",
+    price: "",
+    stock: "",
+    categoryId: "",
     imageFile: null,
   });
   const [editProduct, setEditProduct] = useState(null);
   const [isFetching, setIsFetching] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({
+    key: "name",
+    direction: "asc",
+  });
   const productsPerPage = 5;
+  const [fileToImport, setFileToImport] = useState(null);
+  const [excelData, setExcelData] = useState([]);
+  const [editedData, setEditedData] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Lấy danh sách sản phẩm và loại sản phẩm khi component được mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -41,7 +53,7 @@ const ProductManagement = () => {
         setProducts(productsData);
         setCategories(categoriesData);
       } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu:', error.message);
+        console.error("Lỗi khi lấy dữ liệu:", error.message);
         toast.error(error.message);
       } finally {
         setIsFetching(false);
@@ -50,7 +62,6 @@ const ProductManagement = () => {
     fetchData();
   }, []);
 
-  // Xử lý thay đổi file
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -61,75 +72,52 @@ const ProductManagement = () => {
     }
   };
 
-  // Upload hình ảnh lên Firebase và lấy URL
-  const uploadImageToFirebase = async (file) => {
-    const storageRef = ref(storage, `images/${file.name}_${Date.now()}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    return new Promise((resolve, reject) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log('Upload is ' + progress + '% done');
-        },
-        (error) => {
-          console.error('Lỗi khi upload lên Firebase:', error);
-          reject(error);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          console.log('File available at:', downloadURL);
-          resolve(downloadURL);
-        }
-      );
-    });
-  };
-
-  // Thêm sản phẩm mới
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
       setIsProcessing(true);
-      let imageUrl = '';
-      if (newProduct.imageFile) {
-        imageUrl = await uploadImageToFirebase(newProduct.imageFile);
-      }
 
+      // Chuẩn bị dữ liệu sản phẩm
       const productData = {
         name: newProduct.name,
         price: parseFloat(newProduct.price),
         stock: parseInt(newProduct.stock),
-        category: {
-          id: newProduct.categoryId,
-        },
-        imageUrl,
+        categoryId: newProduct.categoryId,
       };
 
-      console.log('Product data gửi đi:', productData);
+      // Gọi API addProduct từ productService.js
+      const newProductData = await addProduct(productData, newProduct.imageFile);
 
-      const newProductData = await addProduct(productData);
-
-      const selectedCategory = categories.find((cat) => cat.id === newProduct.categoryId);
+      // Cập nhật danh sách sản phẩm
+      const selectedCategory = categories.find(
+        (cat) => cat.id === newProduct.categoryId
+      );
       const newProductWithCategory = {
         ...newProductData,
-        category: selectedCategory || { id: newProduct.categoryId, name: 'N/A' },
+        category: selectedCategory || {
+          id: newProduct.categoryId,
+          name: "N/A",
+        },
       };
 
-      // Thêm sản phẩm mới vào đầu danh sách và đặt lại trang về 1
       setProducts([newProductWithCategory, ...products]);
-      setNewProduct({ name: '', price: '', stock: '', categoryId: '', imageUrl: '', imageFile: null });
-      setCurrentPage(1); // Đặt lại trang về 1 để hiển thị sản phẩm mới ở đầu
-      toast.success('Sản phẩm đã được thêm!');
+      setNewProduct({
+        name: "",
+        price: "",
+        stock: "",
+        categoryId: "",
+        imageFile: null,
+      });
+      setCurrentPage(1);
+      toast.success("Sản phẩm đã được thêm!");
     } catch (error) {
-      console.error('Lỗi khi thêm sản phẩm:', error.message);
+      console.error("Lỗi khi thêm sản phẩm:", error.message);
       toast.error(error.message);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Sửa sản phẩm
   const handleEditProduct = (product) => {
     setEditProduct(product);
     setNewProduct({
@@ -137,7 +125,6 @@ const ProductManagement = () => {
       price: product.price.toString(),
       stock: product.stock.toString(),
       categoryId: product.category.id,
-      imageUrl: product.imageUrl || '',
       imageFile: null,
     });
   };
@@ -146,44 +133,56 @@ const ProductManagement = () => {
     e.preventDefault();
     try {
       setIsProcessing(true);
-      let imageUrl = newProduct.imageUrl;
-      if (newProduct.imageFile) {
-        imageUrl = await uploadImageToFirebase(newProduct.imageFile);
-      }
 
+      // Chuẩn bị dữ liệu sản phẩm
       const productData = {
         name: newProduct.name,
         price: parseFloat(newProduct.price),
         stock: parseInt(newProduct.stock),
-        category: {
-          id: newProduct.categoryId,
-        },
-        imageUrl,
+        categoryId: newProduct.categoryId,
       };
 
-      console.log('Product data gửi đi:', productData);
+      // Gọi API updateProduct từ productService.js
+      const updatedProductData = await updateProduct(
+        editProduct.id,
+        productData,
+        newProduct.imageFile
+      );
 
-      const updatedProductData = await updateProduct(editProduct.id, productData);
-
-      const selectedCategory = categories.find((cat) => cat.id === newProduct.categoryId);
+      // Cập nhật danh sách sản phẩm
+      const selectedCategory = categories.find(
+        (cat) => cat.id === newProduct.categoryId
+      );
       const updatedProductWithCategory = {
         ...updatedProductData,
-        category: selectedCategory || { id: newProduct.categoryId, name: 'N/A' },
+        category: selectedCategory || {
+          id: newProduct.categoryId,
+          name: "N/A",
+        },
       };
 
-      setProducts(products.map((p) => (p.id === editProduct.id ? updatedProductWithCategory : p)));
+      setProducts(
+        products.map((p) =>
+          p.id === editProduct.id ? updatedProductWithCategory : p
+        )
+      );
       setEditProduct(null);
-      setNewProduct({ name: '', price: '', stock: '', categoryId: '', imageUrl: '', imageFile: null });
-      toast.success('Sản phẩm đã được cập nhật!');
+      setNewProduct({
+        name: "",
+        price: "",
+        stock: "",
+        categoryId: "",
+        imageFile: null,
+      });
+      toast.success("Sản phẩm đã được cập nhật!");
     } catch (error) {
-      console.error('Lỗi khi cập nhật sản phẩm:', error.message);
+      console.error("Lỗi khi cập nhật sản phẩm:", error.message);
       toast.error(error.message);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Xóa sản phẩm
   const handleDeleteProduct = async (id) => {
     toast.promise(
       new Promise(async (resolve, reject) => {
@@ -191,7 +190,9 @@ const ProductManagement = () => {
           toast(
             (t) => (
               <div className="flex flex-col items-center">
-                <p className="text-gray-800">Bạn có chắc muốn xóa sản phẩm này?</p>
+                <p className="text-gray-800">
+                  Bạn có chắc muốn xóa sản phẩm này?
+                </p>
                 <div className="mt-3 flex space-x-2">
                   <button
                     onClick={() => {
@@ -217,7 +218,7 @@ const ProductManagement = () => {
             { duration: 5000 }
           );
         });
-  
+
         if (confirmDelete) {
           try {
             setIsProcessing(true);
@@ -234,49 +235,124 @@ const ProductManagement = () => {
           reject("Hủy xóa sản phẩm!");
         }
       }),
-      
+      {
+        loading: "Đang xóa sản phẩm...",
+        success: (message) => message,
+        error: (message) => message,
+      }
     );
   };
-  
 
-  // Tìm kiếm sản phẩm
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Sắp xếp sản phẩm
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortConfig.key === 'name') {
-      return sortConfig.direction === 'asc'
+    if (sortConfig.key === "name") {
+      return sortConfig.direction === "asc"
         ? a.name.localeCompare(b.name)
         : b.name.localeCompare(a.name);
     }
-    if (sortConfig.key === 'price') {
-      return sortConfig.direction === 'asc'
+    if (sortConfig.key === "price") {
+      return sortConfig.direction === "asc"
         ? a.price - b.price
         : b.price - a.price;
     }
-    if (sortConfig.key === 'stock') {
-      return sortConfig.direction === 'asc'
+    if (sortConfig.key === "stock") {
+      return sortConfig.direction === "asc"
         ? a.stock - b.stock
         : b.stock - a.stock;
     }
     return 0;
   });
 
-  // Phân trang
   const totalPages = Math.ceil(sortedProducts.length / productsPerPage);
   const paginatedProducts = sortedProducts.slice(
     (currentPage - 1) * productsPerPage,
     currentPage * productsPerPage
   );
 
-  // Xử lý sắp xếp
   const handleSort = (key) => {
     setSortConfig({
       key,
-      direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc',
+      direction:
+        sortConfig.key === key && sortConfig.direction === "asc"
+          ? "desc"
+          : "asc",
     });
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setFileToImport(file);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      const headers = jsonData[0];
+      const rows = jsonData.slice(1).filter((row) => row.length > 0);
+      const dataArray = rows.map((row) => {
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header] = row[index] || "";
+        });
+        return obj;
+      });
+
+      setExcelData(dataArray);
+      setEditedData(dataArray);
+      setIsEditing(true);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleImport = async () => {
+    if (!fileToImport) {
+      toast.error("Vui lòng chọn file trước khi import!");
+      return;
+    }
+    try {
+      setIsProcessing(true);
+      const response = await importProductsFromExcel(fileToImport);
+      const newProducts = response.map((p) => ({
+        ...p,
+        category: categories.find((cat) => cat.id === p.category.id) || {
+          id: p.category.id,
+          name: "N/A",
+        },
+      }));
+      setProducts([...newProducts, ...products]);
+      setIsEditing(false);
+      setExcelData([]);
+      setEditedData([]);
+      setFileToImport(null);
+      toast.success("Import sản phẩm thành công!");
+    } catch (error) {
+      console.error("Lỗi khi import:", error.message);
+      toast.error(error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleEditChange = (index, field, value) => {
+    const newData = [...editedData];
+    newData[index][field] = value;
+    setEditedData(newData);
+  };
+
+  const handleDownload = () => {
+    const worksheet = XLSX.utils.json_to_sheet(editedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+    XLSX.writeFile(workbook, "edited_products.xlsx");
   };
 
   if (isFetching) return <LoadingSpinner />;
@@ -288,7 +364,222 @@ const ProductManagement = () => {
       transition={{ duration: 0.3 }}
       className="bg-white p-6 rounded-lg shadow-lg max-w-7xl mx-auto"
     >
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản lý sản phẩm</h2>
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">
+        Quản lý sản phẩm
+      </h2>
+
+      <div className="mb-8 bg-gray-50 p-6 rounded-xl shadow-sm border border-gray-200">
+        <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+          <FileSpreadsheet className="w-6 h-6 text-indigo-600" />
+          <span>Import từ Excel</span>
+        </h3>
+
+        <div className="mb-6">
+          {/* Phần chọn file */}
+          <div className="flex items-center space-x-4 mb-4">
+            <label className="relative inline-flex items-center cursor-pointer bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-all duration-200 shadow-md">
+              <FileSpreadsheet className="w-5 h-5 mr-2" />
+              <span className="text-sm font-medium">Chọn file Excel</span>
+              <input
+                type="file"
+                accept=".xlsx"
+                onChange={handleFileUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+            </label>
+            {excelData.length > 0 && (
+              <p className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                Đã chọn:{" "}
+                <span className="font-semibold text-indigo-600">
+                  {excelData.length}
+                </span>{" "}
+                sản phẩm
+              </p>
+            )}
+          </div>
+
+          {/* Bảng chỉnh sửa khi có dữ liệu */}
+          {isEditing && (
+            <div className="mt-6">
+              <h4 className="text-lg font-medium text-gray-800 mb-3">
+                Danh sách sản phẩm (Chỉnh sửa)
+              </h4>
+              <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table className="w-full bg-white">
+                  <thead className="bg-indigo-50 text-gray-700">
+                    <tr>
+                      <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
+                        Tên sản phẩm
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
+                        ID Danh mục
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
+                        Giá (VNĐ)
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
+                        Số lượng
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold border-b border-gray-200">
+                        URL Hình ảnh
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editedData.map((row, index) => (
+                      <tr
+                        key={index}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="p-3 border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={row.name || ""}
+                            onChange={(e) =>
+                              handleEditChange(index, "name", e.target.value)
+                            }
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </td>
+                        <td className="p-3 border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={row.category_id || ""}
+                            onChange={(e) =>
+                              handleEditChange(
+                                index,
+                                "category_id",
+                                e.target.value
+                              )
+                            }
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </td>
+                        <td className="p-3 border-b border-gray-200">
+                          <input
+                            type="number"
+                            value={row.price || ""}
+                            onChange={(e) =>
+                              handleEditChange(index, "price", e.target.value)
+                            }
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </td>
+                        <td className="p-3 border-b border-gray-200">
+                          <input
+                            type="number"
+                            value={row.stock || ""}
+                            onChange={(e) =>
+                              handleEditChange(index, "stock", e.target.value)
+                            }
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </td>
+                        <td className="p-3 border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={row.imageUrl || ""}
+                            onChange={(e) =>
+                              handleEditChange(
+                                index,
+                                "imageUrl",
+                                e.target.value
+                              )
+                            }
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Nút hành động */}
+              <div className="mt-6 flex space-x-4">
+                <button
+                  onClick={handleImport}
+                  className={`px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 flex items-center space-x-2 shadow-md ${
+                    isProcessing ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8h-8z"
+                      ></path>
+                    </svg>
+                  ) : (
+                    <FileSpreadsheet className="w-5 h-5" />
+                  )}
+                  <span>{isProcessing ? "Đang import..." : "Import"}</span>
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center space-x-2 shadow-md"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    ></path>
+                  </svg>
+                  <span>Tải xuống file đã chỉnh sửa</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setFileToImport(null);
+                    setExcelData([]);
+                    setEditedData([]);
+                    setIsEditing(false);
+                  }}
+                  className="px-6 py-2.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center space-x-2 shadow-md"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    ></path>
+                  </svg>
+                  <span>Hủy</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <form
         onSubmit={editProduct ? handleUpdateProduct : handleAddProduct}
@@ -298,7 +589,9 @@ const ProductManagement = () => {
           <input
             type="text"
             value={newProduct.name}
-            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, name: e.target.value })
+            }
             placeholder="Tên sản phẩm"
             className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-full truncate"
             required
@@ -308,7 +601,9 @@ const ProductManagement = () => {
           <input
             type="number"
             value={newProduct.price}
-            onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, price: e.target.value })
+            }
             placeholder="Giá"
             className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-full"
             required
@@ -319,7 +614,9 @@ const ProductManagement = () => {
           <input
             type="number"
             value={newProduct.stock}
-            onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, stock: e.target.value })
+            }
             placeholder="Số lượng"
             className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-full"
             required
@@ -329,7 +626,9 @@ const ProductManagement = () => {
         <div className="md:col-span-1">
           <select
             value={newProduct.categoryId}
-            onChange={(e) => setNewProduct({ ...newProduct, categoryId: e.target.value })}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, categoryId: e.target.value })
+            }
             className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-full"
             required
           >
@@ -342,12 +641,55 @@ const ProductManagement = () => {
           </select>
         </div>
         <div className="md:col-span-1">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="w-full p-2 border rounded-lg max-w-full"
-          />
+          <label
+            className="relative inline-flex items-center cursor-pointer bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all duration-200 shadow-md w-full justify-center group"
+            title={
+              newProduct.imageFile
+                ? newProduct.imageFile.name
+                : "Chọn ảnh để tải lên"
+            }
+          >
+            {newProduct.imageFile ? (
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M5 13l4 4L19 7"
+                ></path>
+              </svg>
+            ) : (
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 16v4h16v-4m-4-4l-4 4m0 0l-4-4m4 4V4"
+                ></path>
+              </svg>
+            )}
+            <span className="text-sm font-medium">
+              {newProduct.imageFile ? "Đã chọn" : "Chọn ảnh"}
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </label>
         </div>
         <div className="md:col-span-1 flex space-x-2">
           <button
@@ -381,14 +723,20 @@ const ProductManagement = () => {
             ) : (
               <PlusCircle className="w-5 h-5" />
             )}
-            <span className="w-full">{editProduct ? 'Cập nhật' : 'Thêm'}</span>
+            <span className="w-full">{editProduct ? "Cập nhật" : "Thêm"}</span>
           </button>
           {editProduct && (
             <button
               type="button"
               onClick={() => {
                 setEditProduct(null);
-                setNewProduct({ name: '', price: '', stock: '', categoryId: '', imageUrl: '', imageFile: null });
+                setNewProduct({
+                  name: "",
+                  price: "",
+                  stock: "",
+                  categoryId: "",
+                  imageFile: null,
+                });
               }}
               className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
             >
@@ -440,14 +788,29 @@ const ProductManagement = () => {
           <thead>
             <tr className="bg-indigo-600 text-white">
               <th className="p-3">Hình ảnh</th>
-              <th className="p-3 cursor-pointer" onClick={() => handleSort('name')}>
-                Tên {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              <th
+                className="p-3 cursor-pointer"
+                onClick={() => handleSort("name")}
+              >
+                Tên{" "}
+                {sortConfig.key === "name" &&
+                  (sortConfig.direction === "asc" ? "↑" : "↓")}
               </th>
-              <th className="p-3 cursor-pointer" onClick={() => handleSort('price')}>
-                Giá {sortConfig.key === 'price' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              <th
+                className="p-3 cursor-pointer"
+                onClick={() => handleSort("price")}
+              >
+                Giá{" "}
+                {sortConfig.key === "price" &&
+                  (sortConfig.direction === "asc" ? "↑" : "↓")}
               </th>
-              <th className="p-3 cursor-pointer" onClick={() => handleSort('stock')}>
-                Số lượng {sortConfig.key === 'stock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              <th
+                className="p-3 cursor-pointer"
+                onClick={() => handleSort("stock")}
+              >
+                Số lượng{" "}
+                {sortConfig.key === "stock" &&
+                  (sortConfig.direction === "asc" ? "↑" : "↓")}
               </th>
               <th className="p-3">Loại</th>
               <th className="p-3">Hành động</th>
@@ -464,7 +827,11 @@ const ProductManagement = () => {
               >
                 <td className="p-3">
                   {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="w-10 h-10 rounded" />
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="w-10 h-10 rounded"
+                    />
                   ) : (
                     <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
                       No Image
@@ -474,7 +841,7 @@ const ProductManagement = () => {
                 <td className="p-3 truncate max-w-xs">{product.name}</td>
                 <td className="p-3">{product.price} VNĐ</td>
                 <td className="p-3">{product.stock}</td>
-                <td className="p-3">{product.category?.name || 'N/A'}</td>
+                <td className="p-3">{product.category?.name || "N/A"}</td>
                 <td className="p-3 space-x-2">
                   <button
                     onClick={() => handleEditProduct(product)}
@@ -509,7 +876,9 @@ const ProductManagement = () => {
           Trang {currentPage} / {totalPages}
         </span>
         <button
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          onClick={() =>
+            setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+          }
           disabled={currentPage === totalPages}
           className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50"
         >

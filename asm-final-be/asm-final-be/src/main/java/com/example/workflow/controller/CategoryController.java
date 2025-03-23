@@ -5,6 +5,7 @@ import com.example.workflow.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,7 +20,9 @@ public class CategoryController {
 
     // Thêm mới loại sản phẩm
     @PostMapping("/categories")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> createCategory(@RequestBody Category category) {
+        System.out.println("POST /api/categories called");
         try {
             Category createdCategory = categoryService.createCategory(category);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdCategory);
@@ -33,6 +36,7 @@ public class CategoryController {
 
     // Cập nhật loại sản phẩm
     @PutMapping("/categories/{categoryId}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> updateCategory(@PathVariable("categoryId") UUID categoryId, @RequestBody Category categoryDetails) {
         try {
             Category updatedCategory = categoryService.updateCategory(categoryId, categoryDetails);
@@ -47,6 +51,7 @@ public class CategoryController {
 
     // Xóa loại sản phẩm
     @DeleteMapping("/categories/{categoryId}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> deleteCategory(@PathVariable("categoryId") UUID categoryId) {
         try {
             categoryService.deleteCategory(categoryId);

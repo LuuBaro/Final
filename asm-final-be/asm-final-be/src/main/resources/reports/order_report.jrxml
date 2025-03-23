@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="order_report" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenNoDataType="AllSectionsNoDetail" uuid="e966d8b3-acbe-4560-9079-3a52e35c56f6">
+    <property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+    <property name="ireport.zoom" value="1.0"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+
+    <!-- Parameters -->
+    <parameter name="FROM_DATE_PARAM" class="java.lang.String" isForPrompting="false"/>
+    <parameter name="TO_DATE_PARAM" class="java.lang.String" isForPrompting="false"/>
+    <parameter name="STATUS_PARAM" class="java.lang.String" isForPrompting="false"/>
+
+    <!-- Query String -->
+    <queryString>
+        <![CDATA[SELECT * FROM camunda.get_order_report(
+            CASE WHEN $P{FROM_DATE_PARAM} IS NOT NULL THEN CAST($P{FROM_DATE_PARAM} AS DATE) ELSE NULL END,
+            CASE WHEN $P{TO_DATE_PARAM} IS NOT NULL THEN CAST($P{TO_DATE_PARAM} AS DATE) ELSE NULL END,
+            $P{STATUS_PARAM}
+        )]]>
+    </queryString>
+
+    <!-- Fields -->
+    <field name="order_id" class="java.util.UUID"/>
+    <field name="user_name" class="java.lang.String"/>
+    <field name="created_at" class="java.sql.Timestamp"/>
+    <field name="status" class="java.lang.String"/>
+    <field name="total_amount" class="java.math.BigDecimal"/>
+    <field name="products" class="java.lang.String"/>
+
+    <!-- Variables -->
+    <variable name="total_amount_SUM" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{total_amount}]]></variableExpression>
+    </variable>
+
+    <!-- Background -->
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+
+    <!-- Title -->
+    <title>
+        <band height="100" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="10" width="555" height="40" forecolor="#3B82F6" uuid="550e8400-e29b-41d4-a716-446655440000">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="26" isBold="true" isUnderline="false"/>
+                </textElement>
+                <text><![CDATA[BARO FASHION]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="50" width="555" height="30" forecolor="#111827" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="18" isBold="true"/>
+                </textElement>
+                <text><![CDATA[THỐNG KÊ ĐƠN HÀNG]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="90" width="555" height="1" forecolor="#14B8A6" uuid="6ba7b810-9dad-11d1-80b4-00c04fd430c8"/>
+            </line>
+        </band>
+    </title>
+
+    <!-- Page Header -->
+    <pageHeader>
+        <band height="50">
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="10" width="555" height="30" forecolor="#14B8A6" uuid="e4da3b7f-ffb0-4e2b-8e4a-6e9b5b4e7f8c"/>
+                <textElement textAlignment="Center">
+                    <font fontName="SansSerif" size="12" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Thời gian: " + ($P{FROM_DATE_PARAM} != null ? $P{FROM_DATE_PARAM} : "Tất cả") + " đến " + ($P{TO_DATE_PARAM} != null ? $P{TO_DATE_PARAM} : "Tất cả") + " | Trạng thái: " + ($P{STATUS_PARAM} != null ? $P{STATUS_PARAM} : "Tất cả")]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageHeader>
+
+    <!-- Column Header -->
+    <columnHeader>
+        <band height="40" splitType="Stretch">
+            <staticText>
+                <reportElement mode="Opaque" x="0" y="0" width="90" height="40" forecolor="#FFFFFF" backcolor="#3B82F6" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
+                <box>
+                    <topPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <leftPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <bottomPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <rightPen lineWidth="1.0" lineColor="#14B8A6"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Mã đơn]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="90" y="0" width="90" height="40" forecolor="#FFFFFF" backcolor="#3B82F6" uuid="b2c3d4e5-f678-9012-bcde-f12345678901"/>
+                <box>
+                    <topPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <leftPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <bottomPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <rightPen lineWidth="1.0" lineColor="#14B8A6"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Khách hàng]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="180" y="0" width="90" height="40" forecolor="#FFFFFF" backcolor="#3B82F6" uuid="c3d4e5f6-7890-1234-cdef-123456789012"/>
+                <box>
+                    <topPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <leftPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <bottomPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <rightPen lineWidth="1.0" lineColor="#14B8A6"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Ngày đặt]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="270" y="0" width="90" height="40" forecolor="#FFFFFF" backcolor="#3B82F6" uuid="d4e5f678-9012-3456-def1-234567890123"/>
+                <box>
+                    <topPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <leftPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <bottomPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <rightPen lineWidth="1.0" lineColor="#14B8A6"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Trạng thái]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="360" y="0" width="90" height="40" forecolor="#FFFFFF" backcolor="#3B82F6" uuid="e5f67890-1234-5678-ef12-345678901234"/>
+                <box>
+                    <topPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <leftPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <bottomPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <rightPen lineWidth="1.0" lineColor="#14B8A6"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Tổng tiền]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="450" y="0" width="105" height="40" forecolor="#FFFFFF" backcolor="#3B82F6" uuid="f6789012-3456-7890-1234-567890123456"/>
+                <box>
+                    <topPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <leftPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <bottomPen lineWidth="1.0" lineColor="#14B8A6"/>
+                    <rightPen lineWidth="1.0" lineColor="#14B8A6"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Sản phẩm]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <!-- Detail -->
+    <detail>
+        <band height="40" splitType="Stretch">
+            <textField>
+                <reportElement x="0" y="0" width="90" height="40" backcolor="#F9FAFB" uuid="12345678-9012-3456-7890-123456789012"/>
+                <box>
+                    <topPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <leftPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <bottomPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <rightPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{order_id} != null ? $F{order_id}.toString() : "N/A"]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="90" y="0" width="90" height="40" backcolor="#F9FAFB" uuid="23456789-0123-4567-8901-234567890123"/>
+                <box>
+                    <topPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <leftPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <bottomPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <rightPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{user_name} != null ? $F{user_name} : "N/A"]]></textFieldExpression>
+            </textField>
+            <textField pattern="dd/MM/yyyy HH:mm">
+                <reportElement x="180" y="0" width="90" height="40" backcolor="#F9FAFB" uuid="34567890-1234-5678-9012-345678901234"/>
+                <box>
+                    <topPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <leftPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <bottomPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <rightPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{created_at} != null ? $F{created_at} : new java.sql.Timestamp(0)]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="270" y="0" width="90" height="40" backcolor="#F9FAFB" uuid="45678901-2345-6789-0123-456789012345"/>
+                <box>
+                    <topPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <leftPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <bottomPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <rightPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{status} != null ? $F{status} : "N/A"]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00">
+                <reportElement x="360" y="0" width="90" height="40" forecolor="#3B82F6" backcolor="#F9FAFB" uuid="56789012-3456-7890-1234-567890123456"/>
+                <box>
+                    <topPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <leftPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <bottomPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <rightPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                </box>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{total_amount} != null ? $F{total_amount} : new java.math.BigDecimal(0)]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="450" y="0" width="105" height="40" backcolor="#F9FAFB" uuid="67890123-4567-8901-2345-678901234567"/>
+                <box>
+                    <topPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <leftPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <bottomPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                    <rightPen lineWidth="0.5" lineColor="#D1D5DB"/>
+                </box>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{products} != null ? $F{products} : "N/A"]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <!-- Column Footer -->
+    <columnFooter>
+        <band height="50" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="10" width="555" height="1" forecolor="#14B8A6" uuid="78901234-5678-9012-3456-789012345678"/>
+            </line>
+            <textField evaluationTime="Report">
+                <reportElement x="360" y="20" width="195" height="20" forecolor="#3B82F6" uuid="89012345-6789-0123-4567-890123456789"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="12" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Tổng cộng: " + String.format("%,.2f", $V{total_amount_SUM}) + " VND"]]></textFieldExpression>
+            </textField>
+        </band>
+    </columnFooter>
+
+    <!-- Page Footer -->
+    <pageFooter>
+        <band height="60" splitType="Stretch">
+            <textField evaluationTime="Now">
+                <reportElement x="0" y="10" width="200" height="20" forecolor="#14B8A6" uuid="90123456-7890-1234-5678-901234567890"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["In ngày: " + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date())]]></textFieldExpression>
+            </textField>
+            <textField evaluationTime="Report">
+                <reportElement x="455" y="10" width="100" height="20" forecolor="#14B8A6" uuid="01234567-8901-2345-6789-012345678901"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER} + " / " + $V{PAGE_COUNT}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="30" width="555" height="20" forecolor="#14B8A6" uuid="12345678-9012-3456-7890-123456789012"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isItalic="true"/>
+                </textElement>
+                <text><![CDATA[Baro Fashion - Đẳng cấp thời trang hiện đại]]></text>
+            </staticText>
+        </band>
+    </pageFooter>
+
+    <!-- Summary -->
+    <summary>
+        <band height="50" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="10" width="555" height="30" forecolor="#FFFFFF" backcolor="#3B82F6" uuid="12345678-9012-3456-7890-123456789012"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[© 2025 Baro Fashion - All Rights Reserved]]></text>
+            </staticText>
+        </band>
+    </summary>
+</jasperReport>

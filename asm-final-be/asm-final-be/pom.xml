@@ -115,7 +115,34 @@
       <artifactId>spring-security-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/net.sf.jasperreports/jasperreports -->
+    <dependency>
+      <groupId>net.sf.jasperreports</groupId>
+      <artifactId>jasperreports</artifactId>
+      <version>6.20.0</version>
+    </dependency>
 
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+
+    <!-- Apache POI (yêu cầu cho JRXlsxDataSource) -->
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi</artifactId>
+      <version>5.2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+      <version>5.2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.firebase</groupId>
+      <artifactId>firebase-admin</artifactId>
+      <version>9.2.0</version> <!-- Kiểm tra phiên bản mới nhất -->
+    </dependency>
   </dependencies>
 
   <build>

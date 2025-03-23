@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import java.security.Key;
@@ -16,7 +17,9 @@ import com.example.workflow.model.User;
 
 @Service
 public class JwtService {
-    public static final String SECRET = "357638792F423F4428472B4B6250655368566D597133743677397A2443264629";
+    // Inject giá trị secret từ application.yml
+    @Value("${app.security.secret}")
+    private String SECRET;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -78,7 +81,7 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId().toString());
         claims.put("email", user.getEmail());
-        claims.put("roles", user.getRole().name());
+        claims.put("role", user.getRole().name());
         claims.put("fullName", user.getName());
         claims.put("phone", user.getPhone());
         return createToken(claims, user.getId().toString()); // Dùng userId làm subject

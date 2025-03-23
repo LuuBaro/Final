@@ -26,7 +26,7 @@ export const login = async (credentials) => {
     const response = await apiClient.post('/login', credentials);
     const token = response.data.token; // Giả định BE trả về token trong response
     const role = response.data.role; // Giả định BE trả về role trong response (nếu có)
-
+    
     if (token) {
       // Lưu token vào cookie với thời hạn 7 ngày
       Cookies.set('authToken', token, { expires: 7 });
@@ -34,6 +34,28 @@ export const login = async (credentials) => {
     return { token, role }; // Trả về cả token và role (nếu có)
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Đăng nhập thất bại!');
+  }
+};
+
+export const forgotPassword = async (data) => {
+  try {
+    const response = await apiClient.post('/forgot-password', null, {
+      params: { email: data.email },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Không thể gửi yêu cầu khôi phục mật khẩu!');
+  }
+};
+
+export const resetPassword = async (data) => {
+  try {
+    const response = await apiClient.post('/reset-password', null, {
+      params: { token: data.token, email: data.email, newPassword: data.newPassword },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Không thể đặt lại mật khẩu!');
   }
 };
 

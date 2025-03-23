@@ -1,10 +1,12 @@
 package com.example.workflow.controller;
 
+import com.example.workflow.dto.request.ChangePasswordRequest;
 import com.example.workflow.model.User;
 import com.example.workflow.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,7 +34,8 @@ public class UserController {
 
     // Cập nhật thông tin người dùng
     @PutMapping("/users/{userId}")
-    public ResponseEntity<?> updateUser(@PathVariable UUID userId, @RequestBody User userDetails) {
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<?> updateUser(@PathVariable("userId") UUID userId, @RequestBody User userDetails) {
         try {
             User updatedUser = userService.updateUser(userId, userDetails);
             return ResponseEntity.ok(updatedUser);
@@ -46,7 +49,8 @@ public class UserController {
 
     // Xóa người dùng
     @DeleteMapping("/users/{userId}")
-    public ResponseEntity<?> deleteUser(@PathVariable UUID userId) {
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<?> deleteUser(@PathVariable("userId") UUID userId) {
         try {
             userService.deleteUser(userId);
             return ResponseEntity.ok("Đã xóa người dùng thành công");
@@ -76,6 +80,34 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Đã xảy ra lỗi khi lấy thông tin người dùng");
+        }
+    }
+
+    // Quên mật khẩu
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestParam("email") String email) {
+        try {
+            userService.forgotPassword(email);
+            return ResponseEntity.ok("Liên kết khôi phục mật khẩu đã được gửi đến email của bạn.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi khi gửi email khôi phục: " + e.getMessage());
+        }
+    }
+
+    // Đặt lại mật khẩu
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestParam("token") String token, @RequestParam("email") String email, @RequestParam("newPassword") String newPassword) {
+        try {
+            userService.resetPassword(token, email, newPassword);
+            return ResponseEntity.ok("Đặt lại mật khẩu thành công.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi khi đặt lại mật khẩu: " + e.getMessage());
         }
     }
 }

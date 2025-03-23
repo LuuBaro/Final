@@ -4,10 +4,8 @@ import com.example.workflow.repository.OrderRepository;
 import com.example.workflow.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -35,6 +33,7 @@ public class CamundaController {
 
     // API xác nhận đơn hàng của admin
     @PutMapping("/approve-order")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> approveOrder(
             @RequestParam("orderId") String orderId,
             @RequestParam(value = "taskId", required = false) String taskId
@@ -44,13 +43,29 @@ public class CamundaController {
 
     // API xác nhận từ chối đơn hàng của admin
     @PutMapping("/reject-stock")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> rejectStock(@RequestParam("orderId") String orderId) {
         return orderService.rejectStock(orderId);
     }
 
     // API xác nhận đồng ý đơn hàng của admin
     @PutMapping("/approve-stock")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<String> approveStock(@RequestParam("orderId") String orderId) {
         return orderService.approveStock(orderId);
+    }
+
+    // API xác nhận thanh toán thành công
+    @PutMapping("/complete-payment-success")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<?> completePaymentSuccess(@RequestParam("orderId") String orderId) {
+        return orderService.completePaymentSuccess(orderId);
+    }
+
+    // API xác nhận thanh toán thất bại
+    @PutMapping("/complete-payment-failure")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<?> completePaymentFailure(@RequestParam("orderId") String orderId) {
+        return orderService.completePaymentFailure(orderId);
     }
 }

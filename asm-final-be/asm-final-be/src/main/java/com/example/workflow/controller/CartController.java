@@ -6,6 +6,7 @@ import com.example.workflow.service.CartService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class CartController {
 
     // Lấy danh sách sản phẩm trong giỏ hàng
     @GetMapping("/cart")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<?> getCartItems() {
         try {
             List<Cart> cartItems = cartService.getCartItems();
@@ -35,6 +37,7 @@ public class CartController {
 
     // Thêm sản phẩm vào giỏ hàng
     @PostMapping("/addCart")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<?> addToCart(@RequestBody AddCartRequest request) {
         try {
             Cart cart = cartService.addToCart(request.getProductId(), request.getQuantity());
@@ -51,6 +54,7 @@ public class CartController {
 
     // Cập nhật số lượng của một sản phẩm trong giỏ hàng
     @PutMapping("/cart/{cartId}")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<?> updateCartQuantity(@PathVariable("cartId") UUID cartId, @RequestBody Map<String, Integer> request) {
         try {
             Cart updatedCart = cartService.updateCartQuantity(cartId, request.get("quantity"));
@@ -67,6 +71,7 @@ public class CartController {
 
     // Xóa sản phẩm khỏi giỏ hàng
     @DeleteMapping("/cart/{cartId}")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<?> removeFromCart(@PathVariable("cartId") UUID cartId) {
         try {
             cartService.removeFromCart(cartId);

@@ -1,43 +1,47 @@
 package com.example.workflow.service;
 
+import com.example.workflow.dto.OrderItemDTO;
+import com.example.workflow.dto.OrderReportDTO;
 import com.example.workflow.model.*;
 import com.example.workflow.repository.*;
 import com.example.workflow.utils.Constants;
 import lombok.RequiredArgsConstructor;
+import net.sf.jasperreports.engine.*;
+import net.sf.jasperreports.engine.export.ooxml.JRXlsxExporter;
+import net.sf.jasperreports.export.SimpleExporterInput;
+import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class OrderService {
 
-    @Autowired
-    private OrderRepository orderRepository;
-
-    @Autowired
-    private OrderItemRepository orderItemRepository;
-
-    @Autowired
-    private CartRepository cartRepository;
-
-    @Autowired
-    private ProductRepository productRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
+    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final CartRepository cartRepository;
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
     private final RuntimeService runtimeService;
-
     private final TaskService taskService;
+    private final DataSource dataSource;
 
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -75,14 +79,9 @@ public class OrderService {
         BigDecimal totalAmount = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
-        // Xử lý từng mục trong giỏ hàng
+        // Xử lý từng mục trong giỏ hàng để tạo OrderItem
         for (Cart cartItem : cartItems) {
             Product product = cartItem.getProduct();
-
-            // Kiểm tra số lượng tồn kho
-            if (product.getStock() < cartItem.getQuantity()) {
-                throw new RuntimeException("Insufficient stock for product: " + product.getName());
-            }
 
             // Tạo OrderItem
             OrderItem orderItem = new OrderItem();
@@ -94,10 +93,6 @@ public class OrderService {
 
             orderItems.add(orderItem);
             totalAmount = totalAmount.add(orderItem.getSubtotal());
-
-            // Cập nhật số lượng tồn kho
-            product.setStock(product.getStock() - cartItem.getQuantity());
-            productRepository.save(product);
         }
 
         order.setItems(orderItems);
@@ -116,7 +111,7 @@ public class OrderService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("orderId", savedOrder.getId().toString());
         variables.put("userId", user.getId().toString());
-        variables.put("totalAmount", totalAmount.toString()); // Chuyển BigDecimal thành String nếu cần
+        variables.put("totalAmount", totalAmount.toString());
 
         runtimeService.startProcessInstanceByKey(
                 "orderProcess",                  // Tên quy trình trong Camunda
@@ -378,6 +373,189 @@ public class OrderService {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
+        }
+    }
+
+    // Xác nhận thanh toán thành công
+    public ResponseEntity<?> completePaymentSuccess(String orderId) {
+        try {
+            UUID orderUUID;
+            try {
+                orderUUID = UUID.fromString(orderId);
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body("❌ Invalid orderId format");
+            }
+
+            Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
+            if (optionalOrder.isEmpty()) {
+                return ResponseEntity.badRequest().body("❌ Order not found");
+            }
+
+            Order order = optionalOrder.get();
+
+            // Cập nhật trạng thái duyệt
+            order.setStatus(Order.OrderStatus.APPROVED);
+            orderRepository.save(order);
+
+            // Tìm Task "Thanh toán thành công"
+            Task task = taskService.createTaskQuery()
+                    .processInstanceBusinessKey(orderUUID.toString()) // Tìm theo orderId
+                    .taskDefinitionKey("Activity_0ardm9h") // ID của User Task "Thanh toán thành công"
+                    .singleResult();
+
+            if (task == null) {
+                return ResponseEntity.badRequest().body("❌ Không tìm thấy User Task 'Thanh toán thành công' cho orderId: " + orderId);
+            }
+
+            // Hoàn thành Task => Camunda sẽ tự động đi đến End Event
+            taskService.complete(task.getId());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "✅ Đơn hàng đã hoàn tất, bắt đầu giao hàng!",
+                    "orderId", orderId
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
+        }
+    }
+
+    // Xác nhận thanh toán thất bại
+    public ResponseEntity<?> completePaymentFailure(String orderId) {
+        try {
+            UUID orderUUID;
+            try {
+                orderUUID = UUID.fromString(orderId);
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body("❌ Invalid orderId format");
+            }
+
+            Optional<Order> optionalOrder = orderRepository.findById(orderUUID);
+            if (optionalOrder.isEmpty()) {
+                return ResponseEntity.badRequest().body("❌ Order not found");
+            }
+
+            Order order = optionalOrder.get();
+
+            // Cập nhật trạng thái duyệt
+            order.setStatus(Order.OrderStatus.DELETED);
+            orderRepository.save(order);
+
+            // Tìm Task "Thanh toán thất bại"
+            Task task = taskService.createTaskQuery()
+                    .processInstanceBusinessKey(orderUUID.toString()) // Tìm theo orderId
+                    .taskDefinitionKey("Activity_0vqplu0") // ID của User Task "Thanh toán thất bại"
+                    .singleResult();
+
+            if (task == null) {
+                return ResponseEntity.badRequest().body("❌ Không tìm thấy User Task 'Thanh toán thất bại' cho orderId: " + orderId);
+            }
+
+            // Hoàn thành Task => Camunda sẽ tự động kết thúc quy trình
+            taskService.complete(task.getId());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "❌ Thanh toán thất bại, đơn hàng đã bị hủy!",
+                    "orderId", orderId
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("❌ Internal Server Error: " + e.getMessage());
+        }
+    }
+
+    // Lấy danh sách báo cáo đơn hàng
+    public List<OrderReportDTO> getOrderReport(LocalDate fromDate, LocalDate toDate, String status) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM camunda.get_order_report(?, ?, ?)")) {
+            // Thiết lập tham số
+            stmt.setObject(1, fromDate != null ? java.sql.Date.valueOf(fromDate) : null);
+            stmt.setObject(2, toDate != null ? java.sql.Date.valueOf(toDate) : null);
+            stmt.setString(3, status);
+
+            List<OrderReportDTO> orders = new ArrayList<>();
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    OrderReportDTO dto = new OrderReportDTO();
+                    dto.setId(UUID.fromString(rs.getString("order_id")));
+                    dto.setUserName(rs.getString("user_name"));
+                    dto.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                    dto.setStatus(rs.getString("status"));
+                    dto.setTotalAmount(rs.getBigDecimal("total_amount"));
+                    dto.setProducts(rs.getString("products"));
+
+                    // Lấy chi tiết đơn hàng
+                    List<OrderItemDTO> items = getOrderItems(conn, dto.getId());
+                    dto.setItems(items);
+
+                    orders.add(dto);
+                }
+            }
+            return orders;
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error: " + e.getMessage(), e);
+        }
+    }
+
+    // Lấy chi tiết đơn hàng
+    private List<OrderItemDTO> getOrderItems(Connection conn, UUID orderId) throws SQLException {
+        try (PreparedStatement itemStmt = conn.prepareStatement(
+                "SELECT oi.quantity, p.name, oi.price, oi.subtotal " +
+                        "FROM order_items oi JOIN products p ON oi.product_id = p.id " +
+                        "WHERE oi.order_id = ?")) {
+            itemStmt.setObject(1, orderId);
+            List<OrderItemDTO> items = new ArrayList<>();
+            try (ResultSet itemRs = itemStmt.executeQuery()) {
+                while (itemRs.next()) {
+                    OrderItemDTO item = new OrderItemDTO();
+                    item.setQuantity(itemRs.getInt("quantity"));
+                    item.setProductName(itemRs.getString("name"));
+                    item.setPrice(itemRs.getBigDecimal("price"));
+                    item.setSubtotal(itemRs.getBigDecimal("subtotal"));
+                    items.add(item);
+                }
+            }
+            return items;
+        }
+    }
+
+    // Xuất báo cáo
+    public byte[] exportReport(String format, LocalDate fromDate, LocalDate toDate, String status) throws JRException {
+        try (Connection conn = dataSource.getConnection()) {
+            // Load file JRXML
+            InputStream jrxmlInputStream = getClass().getResourceAsStream("/reports/order_report.jrxml");
+            if (jrxmlInputStream == null) {
+                throw new IllegalStateException("Report template 'order_report.jrxml' not found in resources/reports/");
+            }
+
+            // Log tham số
+            System.out.println("Export Parameters: FROM_DATE_PARAM=" + fromDate + ", TO_DATE_PARAM=" + toDate + ", STATUS_PARAM=" + status);
+
+            // Compile báo cáo
+            JasperReport jasperReport = JasperCompileManager.compileReport(jrxmlInputStream);
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("FROM_DATE_PARAM", fromDate != null ? fromDate.toString() : null);
+            parameters.put("TO_DATE_PARAM", toDate != null ? toDate.toString() : null);
+            parameters.put("STATUS_PARAM", status);
+
+            // Điền dữ liệu vào báo cáo
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, conn);
+
+            // Xuất báo cáo
+            if ("excel".equalsIgnoreCase(format)) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                JRXlsxExporter exporter = new JRXlsxExporter();
+                exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+                exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(baos));
+                exporter.exportReport();
+                return baos.toByteArray();
+            } else if ("pdf".equalsIgnoreCase(format)) {
+                return JasperExportManager.exportReportToPdf(jasperPrint);
+            } else {
+                throw new IllegalArgumentException("Unsupported report format: " + format);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error: " + e.getMessage(), e);
         }
     }
 }
